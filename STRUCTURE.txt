@@ -1,0 +1,209 @@
+expense-manager/
+│
+├── 📦 package.json                 # Project dependencies and scripts
+├── ⚙️  tsconfig.json                # TypeScript configuration
+├── 🔒 .gitignore                   # Git ignore rules
+├── 🌍 .env.example                 # Environment variables template
+├── 📄 LICENSE                      # MIT License
+├── 📖 README.md                    # Main documentation
+│
+├── 📂 src/                         # Source code
+│   ├── 📂 behaviors/               # BHVR pattern implementation
+│   │   ├── core.ts                 # Core behavior machine
+│   │   └── expense.behavior.ts     # Expense state machine
+│   │
+│   ├── 📂 db/                      # Database layer
+│   │   ├── database.ts             # SQLite setup & utilities
+│   │   ├── migrate.ts              # Database migrations
+│   │   └── seed.ts                 # Sample data seeder
+│   │
+│   ├── 📂 services/                # Business logic layer
+│   │   ├── expense.service.ts      # Expense CRUD & transitions
+│   │   ├── category.service.ts     # Category management
+│   │   └── user.service.ts         # User management
+│   │
+│   ├── 📂 routes/                  # API routes
+│   │   ├── expenses.ts             # Expense endpoints
+│   │   ├── categories.ts           # Category endpoints
+│   │   └── users.ts                # User endpoints
+│   │
+│   └── index.ts                    # Application entry point
+│
+├── 📂 public/                      # Frontend assets
+│   └── index.html                  # Single-page web UI
+│
+├── 📂 docs/                        # Documentation
+│   ├── QUICKSTART.md               # Quick start guide
+│   ├── API_EXAMPLES.md             # API usage examples
+│   ├── BHVR_PATTERN.md             # BHVR pattern guide
+│   ├── STATE_DIAGRAM.md            # State flow diagram
+│   └── DEPLOYMENT.md               # Deployment guide
+│
+└── 📂 tests/                       # Test files
+    └── expense.behavior.test.ts    # Behavior machine tests
+
+Generated Files (not in git):
+├── expenses.db                     # SQLite database
+├── bun.lockb                       # Bun lock file
+└── node_modules/                   # Dependencies
+
+Key Files Explained:
+
+📦 package.json
+   - Defines project metadata and dependencies
+   - Scripts: dev, start, db:migrate, db:seed, test
+
+⚙️  tsconfig.json
+   - TypeScript compiler configuration
+   - Enables strict type checking
+
+🔒 .gitignore
+   - Excludes node_modules, .env, *.db from git
+
+🌍 .env.example
+   - Template for environment variables
+   - Copy to .env and customize
+
+📄 LICENSE
+   - MIT License for open source distribution
+
+📖 README.md
+   - Main project documentation
+   - Features, installation, usage
+
+Core Architecture:
+
+1. BEHAVIORS (State Machine)
+   - core.ts: Generic behavior machine implementation
+   - expense.behavior.ts: Expense workflow definition
+
+2. DATABASE
+   - database.ts: SQLite connection & schema
+   - migrate.ts: Create tables
+   - seed.ts: Insert sample data
+
+3. SERVICES (Business Logic)
+   - expense.service.ts: Expense operations
+   - category.service.ts: Category CRUD
+   - user.service.ts: User management
+
+4. ROUTES (API Layer)
+   - expenses.ts: RESTful expense endpoints
+   - categories.ts: Category endpoints
+   - users.ts: User endpoints
+
+5. FRONTEND
+   - index.html: Complete web interface
+   - Pure HTML/CSS/JavaScript (no framework)
+
+Technology Stack:
+
+- Runtime: Bun (v1.0+)
+- Web Framework: Hono
+- Database: SQLite (built into Bun)
+- Language: TypeScript
+- Testing: Bun Test
+- Frontend: Vanilla JavaScript
+
+API Endpoints:
+
+Expenses:
+  GET    /api/expenses                  # List all
+  POST   /api/expenses                  # Create
+  GET    /api/expenses/:id              # Get by ID
+  PATCH  /api/expenses/:id              # Update
+  DELETE /api/expenses/:id              # Delete
+  POST   /api/expenses/:id/submit       # Submit
+  POST   /api/expenses/:id/approve      # Approve
+  POST   /api/expenses/:id/reject       # Reject
+  POST   /api/expenses/:id/pay          # Mark paid
+  POST   /api/expenses/:id/archive      # Archive
+  GET    /api/expenses/:id/history      # Get history
+  GET    /api/expenses/stats/summary    # Statistics
+
+Categories:
+  GET    /api/categories                # List all
+  POST   /api/categories                # Create
+  GET    /api/categories/:id            # Get by ID
+  PATCH  /api/categories/:id            # Update
+  DELETE /api/categories/:id            # Delete
+
+Users:
+  GET    /api/users                     # List all
+  POST   /api/users                     # Create
+  GET    /api/users/:id                 # Get by ID
+
+Database Schema:
+
+Tables:
+  - users              (User accounts & roles)
+  - categories         (Expense categories)
+  - expenses           (Main expense records)
+  - expense_history    (State transition audit log)
+  - receipts           (File attachments - planned)
+
+State Flow:
+
+  draft → pending_approval → approved → paid → archived
+            ↓                    ↓
+          rejected ←─────────────┘
+
+States:
+  - draft              Initial creation
+  - pending_approval   Awaiting review
+  - approved           Approved by manager
+  - rejected           Rejected by manager
+  - paid               Payment processed
+  - archived           Archived for records
+
+Commands:
+
+Development:
+  bun install          # Install dependencies
+  bun run dev          # Start dev server (watch mode)
+  bun run start        # Start production server
+
+Database:
+  bun run db:migrate   # Initialize database
+  bun run db:seed      # Add sample data
+
+Testing:
+  bun test             # Run test suite
+
+Environment Variables:
+
+PORT=3000                          # Server port
+DATABASE_PATH=./expenses.db        # SQLite database path
+NODE_ENV=development               # Environment (development/production)
+
+Features:
+
+✅ State machine-based workflow
+✅ Type-safe transitions
+✅ Complete audit trail
+✅ RESTful API
+✅ Modern web UI
+✅ SQLite database
+✅ Multi-user support
+✅ Role-based actions
+✅ Real-time statistics
+✅ Category management
+✅ Comprehensive documentation
+✅ Unit tests
+✅ Guard conditions
+✅ Side effects
+✅ Event sourcing
+
+Future Enhancements:
+
+🔜 File upload (receipts)
+🔜 JWT authentication
+🔜 Email notifications
+🔜 PDF export
+🔜 Advanced reporting
+🔜 Budget tracking
+🔜 Multi-currency support
+🔜 Recurring expenses
+🔜 Mobile app (React Native)
+🔜 WebSocket for real-time updates
+

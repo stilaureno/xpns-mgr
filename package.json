@@ -1,0 +1,26 @@
+{
+  "name": "expense-manager",
+  "version": "1.0.0",
+  "description": "A modern expense manager built with Bun and BHVR pattern",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/index.mariadb.ts",
+    "start": "bun run src/index.mariadb.ts",
+    "dev:sqlite": "bun run --watch src/index.ts",
+    "start:sqlite": "bun run src/index.ts",
+    "db:migrate": "bun run src/db/migrate-mariadb.ts",
+    "db:seed": "bun run src/db/seed-mariadb.ts",
+    "db:migrate:sqlite": "bun run src/db/migrate.ts",
+    "db:seed:sqlite": "bun run src/db/seed.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.12.0",
+    "hono": "^4.0.0",
+    "mysql2": "^3.16.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "bun-types": "latest"
+  }
+}
