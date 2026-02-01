@@ -597,6 +597,116 @@
             color: var(--gray-600);
         }
 
+        /* Custom Month Dropdown with Totals */
+        .custom-month-dropdown {
+            position: relative;
+            width: 200px;
+        }
+
+        .custom-month-selected {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            border: 1px solid var(--gray-300);
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            gap: 8px;
+        }
+
+        .custom-month-selected:hover {
+            border-color: var(--primary);
+        }
+
+        .custom-month-selected.open {
+            border-color: var(--primary);
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+
+        .custom-month-name {
+            font-weight: 500;
+            color: var(--gray-900);
+        }
+
+        .custom-month-total {
+            font-size: 12px;
+            color: var(--gray-600);
+            font-weight: 400;
+        }
+
+        .custom-month-options {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid var(--primary);
+            border-top: none;
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .custom-month-options.show {
+            display: block;
+        }
+
+        .custom-month-option {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            cursor: pointer;
+            transition: background 0.15s ease;
+            border-bottom: 1px solid var(--gray-100);
+        }
+
+        .custom-month-option:last-child {
+            border-bottom: none;
+        }
+
+        .custom-month-option:hover {
+            background: var(--gray-50);
+        }
+
+        .custom-month-option.selected {
+            background: var(--primary)15;
+            font-weight: 600;
+        }
+
+        .custom-month-option .month-name {
+            color: var(--gray-900);
+        }
+
+        .custom-month-option.selected .month-name {
+            color: var(--primary);
+        }
+
+        .custom-month-option .month-total {
+            font-size: 12px;
+            color: var(--gray-600);
+            font-weight: 400;
+        }
+
+        .custom-month-option.selected .month-total {
+            color: var(--primary);
+        }
+
+        /* Mobile styles for custom month dropdown */
+        @media (max-width: 768px) {
+            .custom-month-dropdown {
+                width: 100%;
+            }
+        }
+
         /* Date Expenses Modal Styles */
         .date-expense-list {
             display: flex;
@@ -1966,6 +2076,55 @@
                 background: var(--gray-200);
             }
 
+            /* Custom month dropdown mobile styles */
+            .custom-month-dropdown {
+                width: 100%;
+            }
+
+            .custom-month-selected {
+                width: 100%;
+                padding: 12px 14px !important;
+                border: none !important;
+                background: transparent;
+                border-radius: 10px;
+                font-size: 14px;
+                font-weight: 500;
+                color: var(--gray-700);
+                text-align: center;
+                justify-content: center;
+                gap: 8px;
+            }
+
+            .custom-month-selected:hover {
+                background-color: white;
+            }
+
+            .custom-month-selected:active {
+                background: var(--gray-200);
+            }
+
+            .custom-month-selected.open {
+                background-color: white;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+
+            .custom-month-options {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                top: auto;
+                max-height: 50vh;
+                border-radius: 16px 16px 0 0;
+                z-index: 100000;
+                box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+            }
+
+            .custom-month-option {
+                padding: 16px 20px;
+                font-size: 16px;
+            }
+
             .daily-totals-table {
                 font-size: 13px;
             }
@@ -2420,20 +2579,9 @@
                         </div>
                         <div class="filter-group">
                             <label>Month</label>
-                            <select id="dailyTotalsMonth" class="daily-totals-select" onchange="loadDailyTotals()">
-                                <option value="1">January</option>
-                                <option value="2">February</option>
-                                <option value="3">March</option>
-                                <option value="4">April</option>
-                                <option value="5">May</option>
-                                <option value="6">June</option>
-                                <option value="7">July</option>
-                                <option value="8">August</option>
-                                <option value="9">September</option>
-                                <option value="10">October</option>
-                                <option value="11">November</option>
-                                <option value="12">December</option>
-                            </select>
+                            <div id="monthDropdownContainer">
+                                <!-- Custom month dropdown will be rendered here -->
+                            </div>
                         </div>
                     </div>
                     <div id="dailyTotalsContent">
@@ -4682,23 +4830,199 @@
                 yearSelect.appendChild(option);
             }
             
-            // Set current month
-            const monthSelect = document.getElementById('dailyTotalsMonth');
-            if (monthSelect) {
-                monthSelect.value = currentMonth;
+            // Initialize custom month dropdown with totals
+            updateMonthDropdownWithTotals(currentYear, currentMonth);
+        }
+
+        // Update month dropdown with totals for the selected year
+        async function updateMonthDropdownWithTotals(year, selectedMonth) {
+            const container = document.getElementById('monthDropdownContainer');
+            if (!container) return;
+
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                              'July', 'August', 'September', 'October', 'November', 'December'];
+
+            // Fetch all expenses for the year to calculate monthly totals
+            let monthlyTotals = new Array(12).fill(0);
+            
+            try {
+                // Get year start and end dates in GMT+8
+                const yearStart = new Date(Date.UTC(year, 0, 1, 0, 0, 0, 0) - (8 * 60 * 60 * 1000));
+                const yearEnd = new Date(Date.UTC(year, 11, 31, 23, 59, 59, 999) - (8 * 60 * 60 * 1000));
+
+                const response = await fetch(`${API_BASE}/expenses?startDate=${yearStart.toISOString()}&endDate=${yearEnd.toISOString()}&limit=10000`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    // API returns array directly, not wrapped in {expenses: []}
+                    const expenses = Array.isArray(data) ? data : (data.expenses || []);
+                    
+                    console.log(`Found ${expenses.length} expenses for ${year}`, expenses.slice(0, 3));
+                    
+                    // Calculate totals by month
+                    expenses.forEach(expense => {
+                        if (expense.date) {
+                            const dateParts = expense.date.split('-');
+                            if (dateParts.length >= 2) {
+                                const month = parseInt(dateParts[1]) - 1; // 0-indexed
+                                if (month >= 0 && month < 12) {
+                                    monthlyTotals[month] += (expense.amount || 0);
+                                }
+                            }
+                        }
+                    });
+                    
+                    console.log('Monthly totals:', monthlyTotals);
+                }
+            } catch (error) {
+                console.error('Error fetching monthly totals:', error);
+            }
+
+            // Find selected month name and total
+            const selectedMonthIndex = selectedMonth - 1;
+            const selectedMonthName = monthNames[selectedMonthIndex];
+            const selectedTotal = monthlyTotals[selectedMonthIndex];
+
+            // Format currency
+            const formatCurrency = (amount) => {
+                return new Intl.NumberFormat('en-PH', {
+                    style: 'currency',
+                    currency: 'PHP',
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }).format(amount);
+            };
+
+            // Build custom dropdown HTML
+            const totalAmount = selectedTotal > 0 ? `<span class="custom-month-total">${formatCurrency(selectedTotal)}</span>` : '<span class="custom-month-total">₱0.00</span>';
+            
+            let dropdownHTML = `
+                <div class="custom-month-dropdown" id="customMonthDropdown">
+                    <div class="custom-month-selected" onclick="toggleMonthDropdown()" id="monthDropdownSelected">
+                        <span class="custom-month-name">${selectedMonthName}</span>
+                        ${totalAmount}
+                        <span class="material-icons" style="font-size: 18px; color: var(--gray-400);">expand_more</span>
+                    </div>
+                    <div class="custom-month-options" id="monthDropdownOptions">
+            `;
+
+            // Generate options for each month
+            monthNames.forEach((monthName, index) => {
+                const monthNum = index + 1;
+                const isSelected = monthNum === selectedMonth;
+                const monthTotal = monthlyTotals[index];
+                const totalDisplay = monthTotal > 0 ? formatCurrency(monthTotal) : '₱0.00';
+                
+                dropdownHTML += `
+                    <div class="custom-month-option${isSelected ? ' selected' : ''}" onclick="selectMonth(${monthNum}, ${year})">
+                        <span class="month-name">${monthName}</span>
+                        <span class="month-total">${totalDisplay}</span>
+                    </div>
+                `;
+            });
+
+            dropdownHTML += `
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = dropdownHTML;
+        }
+
+        // Toggle month dropdown visibility
+        function toggleMonthDropdown() {
+            const dropdown = document.getElementById('customMonthDropdown');
+            const selected = document.getElementById('monthDropdownSelected');
+            const options = document.getElementById('monthDropdownOptions');
+            
+            if (!dropdown || !selected || !options) return;
+            
+            const isOpen = options.classList.contains('show');
+            
+            // Close all dropdowns first
+            document.querySelectorAll('.custom-month-options').forEach(el => el.classList.remove('show'));
+            document.querySelectorAll('.custom-month-selected').forEach(el => el.classList.remove('open'));
+            
+            // Toggle current dropdown
+            if (!isOpen) {
+                options.classList.add('show');
+                selected.classList.add('open');
             }
         }
 
-        // Load daily totals for selected month and year
-        async function loadDailyTotals() {
+        // Select a month from the dropdown
+        function selectMonth(month, year) {
+            // Update the dropdown display
+            updateMonthDropdownWithTotals(year, month);
+            
+            // Load daily totals for the selected month
+            loadDailyTotalsForMonth(month);
+            
+            // Close dropdown
+            const options = document.getElementById('monthDropdownOptions');
+            const selected = document.getElementById('monthDropdownSelected');
+            if (options) options.classList.remove('show');
+            if (selected) selected.classList.remove('open');
+        }
+
+        // Load daily totals for a specific month
+        async function loadDailyTotalsForMonth(month) {
             const yearSelect = document.getElementById('dailyTotalsYear');
-            const monthSelect = document.getElementById('dailyTotalsMonth');
             const contentDiv = document.getElementById('dailyTotalsContent');
             
-            if (!yearSelect || !monthSelect || !contentDiv) return;
+            if (!yearSelect || !contentDiv) return;
             
             const year = parseInt(yearSelect.value);
-            const month = parseInt(monthSelect.value);
+            
+            try {
+                contentDiv.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--gray-600);">Loading...</div>';
+                
+                const response = await fetch(`${API_BASE}/expenses/stats/daily-totals?year=${year}&month=${month}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const dailyTotals = await response.json();
+                renderDailyTotals(dailyTotals, year, month);
+            } catch (error) {
+                console.error('Error loading daily totals:', error);
+                contentDiv.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon"><span class="material-icons">error_outline</span></div>
+                        <h3>Error loading daily totals</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Load daily totals for selected month and year (kept for compatibility)
+        async function loadDailyTotals() {
+            const yearSelect = document.getElementById('dailyTotalsYear');
+            const contentDiv = document.getElementById('dailyTotalsContent');
+            
+            if (!yearSelect || !contentDiv) return;
+            
+            const year = parseInt(yearSelect.value);
+            const currentMonth = new Date().getMonth() + 1;
+            
+            // Update month dropdown with new year totals
+            updateMonthDropdownWithTotals(year, currentMonth);
+            
+            // Get the currently selected month from the dropdown
+            const monthDropdownSelected = document.querySelector('#monthDropdownSelected .custom-month-name');
+            let month = currentMonth;
+            
+            if (monthDropdownSelected) {
+                const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                                  'July', 'August', 'September', 'October', 'November', 'December'];
+                const selectedMonthName = monthDropdownSelected.textContent;
+                const monthIndex = monthNames.indexOf(selectedMonthName);
+                if (monthIndex >= 0) {
+                    month = monthIndex + 1;
+                }
+            }
             
             try {
                 contentDiv.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--gray-600);">Loading...</div>';
@@ -4809,6 +5133,21 @@
             
             contentDiv.innerHTML = tableHTML;
         }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('customMonthDropdown');
+            const selected = document.getElementById('monthDropdownSelected');
+            const options = document.getElementById('monthDropdownOptions');
+            
+            if (!dropdown || !selected || !options) return;
+            
+            // Check if click is outside the dropdown
+            if (!dropdown.contains(event.target)) {
+                options.classList.remove('show');
+                selected.classList.remove('open');
+            }
+        });
     </script>
 </body>
 </html>
