@@ -707,6 +707,116 @@
             }
         }
 
+        /* Custom Year Dropdown with Totals */
+        .custom-year-dropdown {
+            position: relative;
+            width: 150px;
+        }
+
+        .custom-year-selected {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            border: 1px solid var(--gray-300);
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            gap: 8px;
+        }
+
+        .custom-year-selected:hover {
+            border-color: var(--primary);
+        }
+
+        .custom-year-selected.open {
+            border-color: var(--primary);
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+
+        .custom-year-name {
+            font-weight: 500;
+            color: var(--gray-900);
+        }
+
+        .custom-year-total {
+            font-size: 12px;
+            color: var(--gray-600);
+            font-weight: 400;
+        }
+
+        .custom-year-options {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid var(--primary);
+            border-top: none;
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            max-height: 250px;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .custom-year-options.show {
+            display: block;
+        }
+
+        .custom-year-option {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            cursor: pointer;
+            transition: background 0.15s ease;
+            border-bottom: 1px solid var(--gray-100);
+        }
+
+        .custom-year-option:last-child {
+            border-bottom: none;
+        }
+
+        .custom-year-option:hover {
+            background: var(--gray-50);
+        }
+
+        .custom-year-option.selected {
+            background: var(--primary)15;
+            font-weight: 600;
+        }
+
+        .custom-year-option .year-name {
+            color: var(--gray-900);
+        }
+
+        .custom-year-option.selected .year-name {
+            color: var(--primary);
+        }
+
+        .custom-year-option .year-total {
+            font-size: 12px;
+            color: var(--gray-600);
+            font-weight: 400;
+        }
+
+        .custom-year-option.selected .year-total {
+            color: var(--primary);
+        }
+
+        /* Mobile styles for custom year dropdown */
+        @media (max-width: 768px) {
+            .custom-year-dropdown {
+                width: 100%;
+            }
+        }
+
         /* Date Expenses Modal Styles */
         .date-expense-list {
             display: flex;
@@ -2573,9 +2683,9 @@
                     <div class="daily-totals-controls">
                         <div class="filter-group">
                             <label>Year</label>
-                            <select id="dailyTotalsYear" class="daily-totals-select" onchange="loadDailyTotals()">
-                                <!-- Will be populated dynamically -->
-                            </select>
+                            <div id="yearDropdownContainer">
+                                <!-- Custom year dropdown will be rendered here -->
+                            </div>
                         </div>
                         <div class="filter-group">
                             <label>Month</label>
@@ -2958,7 +3068,7 @@
             let lastKnownDate = todayString;
 
             initializeFilterBadges();
-            initializeDailyTotalsYear();
+            await initializeDailyTotalsYear();
             await loadCategories();
             await loadUsers();
             await loadExpenses();
@@ -4811,27 +4921,218 @@
             }
         }
 
-        // Initialize year dropdown for daily totals
-        function initializeDailyTotalsYear() {
-            const yearSelect = document.getElementById('dailyTotalsYear');
-            if (!yearSelect) return;
-            
+        // Initialize year dropdown for daily totals (with custom dropdown showing totals)
+        async function initializeDailyTotalsYear() {
+            const container = document.getElementById('yearDropdownContainer');
+            if (!container) return;
+
             const currentYear = new Date().getFullYear();
             const currentMonth = new Date().getMonth() + 1;
-            
-            // Populate years (current year and 5 years back)
+
+            // Create a list of years to show (current year and 5 years back)
+            const years = [];
             for (let i = currentYear; i >= currentYear - 5; i--) {
-                const option = document.createElement('option');
-                option.value = i;
-                option.textContent = i;
-                if (i === currentYear) {
-                    option.selected = true;
-                }
-                yearSelect.appendChild(option);
+                years.push(i);
             }
-            
+
+            // Fetch yearly totals for all years
+            let yearlyTotals = {};
+            try {
+                // Fetch all active expenses to calculate yearly totals
+                // Since we don't have a yearly filter, we'll fetch all and group by year
+                const response = await fetch(`${API_BASE}/expenses?state=active&limit=10000`);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const expenses = Array.isArray(data) ? data : (data.expenses || []);
+
+                    // Calculate totals by year
+                    expenses.forEach(expense => {
+                        if (expense.date) {
+                            const year = parseInt(expense.date.split('-')[0]);
+                            if (year >= currentYear - 5 && year <= currentYear) {
+                                yearlyTotals[year] = (yearlyTotals[year] || 0) + (expense.amount || 0);
+                            }
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching yearly totals:', error);
+            }
+
+            // Format currency
+            const formatCurrency = (amount) => {
+                return new Intl.NumberFormat('en-PH', {
+                    style: 'currency',
+                    currency: 'PHP',
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }).format(amount);
+            };
+
+            // Build custom year dropdown HTML
+            const selectedTotal = yearlyTotals[currentYear] || 0;
+            const totalDisplay = selectedTotal > 0 ? formatCurrency(selectedTotal) : '₱0.00';
+
+            let dropdownHTML = `
+                <div class="custom-year-dropdown" id="customYearDropdown">
+                    <div class="custom-year-selected" onclick="toggleYearDropdown()" id="yearDropdownSelected">
+                        <span class="custom-year-name">${currentYear}</span>
+                        <span class="custom-year-total">${totalDisplay}</span>
+                        <span class="material-icons" style="font-size: 18px; color: var(--gray-400);">expand_more</span>
+                    </div>
+                    <div class="custom-year-options" id="yearDropdownOptions">
+            `;
+
+            // Generate options for each year
+            years.forEach(year => {
+                const isSelected = year === currentYear;
+                const yearTotal = yearlyTotals[year] || 0;
+                const totalDisplayOption = yearTotal > 0 ? formatCurrency(yearTotal) : '₱0.00';
+
+                dropdownHTML += `
+                    <div class="custom-year-option${isSelected ? ' selected' : ''}" onclick="selectYear(${year})">
+                        <span class="year-name">${year}</span>
+                        <span class="year-total">${totalDisplayOption}</span>
+                    </div>
+                `;
+            });
+
+            dropdownHTML += `
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = dropdownHTML;
+
             // Initialize custom month dropdown with totals
             updateMonthDropdownWithTotals(currentYear, currentMonth);
+        }
+
+        // Toggle year dropdown visibility
+        function toggleYearDropdown() {
+            const dropdown = document.getElementById('customYearDropdown');
+            const selected = document.getElementById('yearDropdownSelected');
+            const options = document.getElementById('yearDropdownOptions');
+
+            if (!dropdown || !selected || !options) return;
+
+            const isOpen = options.classList.contains('show');
+
+            // Close all dropdowns first
+            document.querySelectorAll('.custom-year-options').forEach(el => el.classList.remove('show'));
+            document.querySelectorAll('.custom-year-selected').forEach(el => el.classList.remove('open'));
+
+            // Toggle current dropdown
+            if (!isOpen) {
+                options.classList.add('show');
+                selected.classList.add('open');
+            }
+        }
+
+        // Select a year from the dropdown
+        async function selectYear(year) {
+            const currentMonth = new Date().getMonth() + 1;
+
+            // Update the dropdown display
+            await updateYearDropdownWithTotals(year);
+
+            // Update month dropdown totals for the new year
+            await updateMonthDropdownWithTotals(year, currentMonth);
+
+            // Load daily totals for the selected month
+            loadDailyTotalsForMonth(currentMonth);
+
+            // Close dropdown
+            const options = document.getElementById('yearDropdownOptions');
+            const selected = document.getElementById('yearDropdownSelected');
+            if (options) options.classList.remove('show');
+            if (selected) selected.classList.remove('open');
+        }
+
+        // Update year dropdown with totals
+        async function updateYearDropdownWithTotals(selectedYear) {
+            const container = document.getElementById('yearDropdownContainer');
+            if (!container) return;
+
+            const currentYear = new Date().getFullYear();
+            const currentMonth = new Date().getMonth() + 1;
+
+            // Create a list of years to show (current year and 5 years back)
+            const years = [];
+            for (let i = currentYear; i >= currentYear - 5; i--) {
+                years.push(i);
+            }
+
+            // Fetch yearly totals for all years
+            let yearlyTotals = {};
+            try {
+                // Fetch all active expenses to calculate yearly totals
+                const response = await fetch(`${API_BASE}/expenses?state=active&limit=10000`);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const expenses = Array.isArray(data) ? data : (data.expenses || []);
+
+                    // Calculate totals by year
+                    expenses.forEach(expense => {
+                        if (expense.date) {
+                            const year = parseInt(expense.date.split('-')[0]);
+                            if (year >= currentYear - 5 && year <= currentYear) {
+                                yearlyTotals[year] = (yearlyTotals[year] || 0) + (expense.amount || 0);
+                            }
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching yearly totals:', error);
+            }
+
+            // Format currency
+            const formatCurrency = (amount) => {
+                return new Intl.NumberFormat('en-PH', {
+                    style: 'currency',
+                    currency: 'PHP',
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }).format(amount);
+            };
+
+            // Find selected year total
+            const selectedTotal = yearlyTotals[selectedYear] || 0;
+            const totalDisplay = selectedTotal > 0 ? formatCurrency(selectedTotal) : '₱0.00';
+
+            // Build custom year dropdown HTML
+            let dropdownHTML = `
+                <div class="custom-year-dropdown" id="customYearDropdown">
+                    <div class="custom-year-selected" onclick="toggleYearDropdown()" id="yearDropdownSelected">
+                        <span class="custom-year-name">${selectedYear}</span>
+                        <span class="custom-year-total">${totalDisplay}</span>
+                        <span class="material-icons" style="font-size: 18px; color: var(--gray-400);">expand_more</span>
+                    </div>
+                    <div class="custom-year-options" id="yearDropdownOptions">
+            `;
+
+            // Generate options for each year
+            years.forEach(year => {
+                const isSelected = year === selectedYear;
+                const yearTotal = yearlyTotals[year] || 0;
+                const totalDisplayOption = yearTotal > 0 ? formatCurrency(yearTotal) : '₱0.00';
+
+                dropdownHTML += `
+                    <div class="custom-year-option${isSelected ? ' selected' : ''}" onclick="selectYear(${year})">
+                        <span class="year-name">${year}</span>
+                        <span class="year-total">${totalDisplayOption}</span>
+                    </div>
+                `;
+            });
+
+            dropdownHTML += `
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = dropdownHTML;
         }
 
         // Update month dropdown with totals for the selected year
@@ -4968,13 +5269,17 @@
 
         // Load daily totals for a specific month
         async function loadDailyTotalsForMonth(month) {
-            const yearSelect = document.getElementById('dailyTotalsYear');
             const contentDiv = document.getElementById('dailyTotalsContent');
-            
-            if (!yearSelect || !contentDiv) return;
-            
-            const year = parseInt(yearSelect.value);
-            
+
+            // Get selected year from custom dropdown
+            const yearDropdownSelected = document.querySelector('#yearDropdownSelected .custom-year-name');
+            let year = new Date().getFullYear();
+            if (yearDropdownSelected) {
+                year = parseInt(yearDropdownSelected.textContent);
+            }
+
+            if (!contentDiv) return;
+
             try {
                 contentDiv.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--gray-600);">Loading...</div>';
                 
@@ -5000,14 +5305,19 @@
 
         // Load daily totals for selected month and year (kept for compatibility)
         async function loadDailyTotals() {
-            const yearSelect = document.getElementById('dailyTotalsYear');
             const contentDiv = document.getElementById('dailyTotalsContent');
-            
-            if (!yearSelect || !contentDiv) return;
-            
-            const year = parseInt(yearSelect.value);
+
+            // Get selected year from custom dropdown
+            const yearDropdownSelected = document.querySelector('#yearDropdownSelected .custom-year-name');
+            let year = new Date().getFullYear();
+            if (yearDropdownSelected) {
+                year = parseInt(yearDropdownSelected.textContent);
+            }
+
+            if (!contentDiv) return;
+
             const currentMonth = new Date().getMonth() + 1;
-            
+
             // Update month dropdown with new year totals
             updateMonthDropdownWithTotals(year, currentMonth);
             
@@ -5137,16 +5447,28 @@
 
         // Close dropdown when clicking outside
         document.addEventListener('click', function(event) {
-            const dropdown = document.getElementById('customMonthDropdown');
-            const selected = document.getElementById('monthDropdownSelected');
-            const options = document.getElementById('monthDropdownOptions');
-            
-            if (!dropdown || !selected || !options) return;
-            
-            // Check if click is outside the dropdown
-            if (!dropdown.contains(event.target)) {
-                options.classList.remove('show');
-                selected.classList.remove('open');
+            // Handle month dropdown
+            const monthDropdown = document.getElementById('customMonthDropdown');
+            const monthSelected = document.getElementById('monthDropdownSelected');
+            const monthOptions = document.getElementById('monthDropdownOptions');
+
+            if (monthDropdown && monthSelected && monthOptions) {
+                if (!monthDropdown.contains(event.target)) {
+                    monthOptions.classList.remove('show');
+                    monthSelected.classList.remove('open');
+                }
+            }
+
+            // Handle year dropdown
+            const yearDropdown = document.getElementById('customYearDropdown');
+            const yearSelected = document.getElementById('yearDropdownSelected');
+            const yearOptions = document.getElementById('yearDropdownOptions');
+
+            if (yearDropdown && yearSelected && yearOptions) {
+                if (!yearDropdown.contains(event.target)) {
+                    yearOptions.classList.remove('show');
+                    yearSelected.classList.remove('open');
+                }
             }
         });
     </script>
