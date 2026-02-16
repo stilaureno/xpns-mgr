@@ -1,4 +1,4 @@
-import { supabase, Category as SupabaseCategory } from '../db/database-supabase';
+import { getSupabaseClient, Category as SupabaseCategory } from '../db/database-supabase';
 
 export interface Category {
   id: string;
@@ -19,7 +19,7 @@ export class CategoryService {
       createdAt: now,
     };
 
-    const { data: insertedCategory, error } = await supabase
+    const { data: insertedCategory, error } = await getSupabaseClient()
       .from('categories')
       .insert([{
         id: category.id,
@@ -40,7 +40,7 @@ export class CategoryService {
 
   // Get category by ID
   static async getById(id: string): Promise<Category | null> {
-    const { data: category, error } = await supabase
+    const { data: category, error } = await getSupabaseClient()
       .from('categories')
       .select('*')
       .eq('id', id)
@@ -56,7 +56,7 @@ export class CategoryService {
 
   // Get all categories
   static async getAll(): Promise<Category[]> {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabaseClient()
       .from('categories')
       .select('*')
       .order('name', { ascending: true });
@@ -80,7 +80,7 @@ export class CategoryService {
     if (updates.description !== undefined) updateData.description = updates.description;
     if (updates.color !== undefined) updateData.color = updates.color;
 
-    const { data, error } = await supabase
+    const { data, error } = await getSupabaseClient()
       .from('categories')
       .update(updateData)
       .eq('id', id)
@@ -97,7 +97,7 @@ export class CategoryService {
 
   // Delete category
   static async delete(id: string): Promise<boolean> {
-    const { error } = await supabase
+    const { error } = await getSupabaseClient()
       .from('categories')
       .delete()
       .eq('id', id);
@@ -112,7 +112,7 @@ export class CategoryService {
 
   // Find category by name
   static async findByName(name: string): Promise<Category | null> {
-    const { data: category, error } = await supabase
+    const { data: category, error } = await getSupabaseClient()
       .from('categories')
       .select('*')
       .ilike('name', name)

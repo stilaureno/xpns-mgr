@@ -53,42 +53,59 @@ export interface Receipt {
   uploaded_at: string;
 }
 
-// Initialize Supabase client
-const SUPABASE_URL = process.env.SUPABASE_URL!;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY!;
+// Supabase client will be created lazily when first accessed
+let _supabase: SupabaseClient | null = null;
 
-if (!SUPABASE_URL) {
-  throw new Error('Missing SUPABASE_URL in environment variables');
-}
+export const getSupabaseClient = (): SupabaseClient => {
+  if (!_supabase) {
+    const SUPABASE_URL = process.env.SUPABASE_URL;
+    const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
-if (!SUPABASE_ANON_KEY) {
-  throw new Error('Missing SUPABASE_ANON_KEY in environment variables');
-}
+    if (!SUPABASE_URL) {
+      throw new Error('Missing SUPABASE_URL in environment variables');
+    }
 
-export const supabase: SupabaseClient = createClient(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY
-);
+    if (!SUPABASE_ANON_KEY) {
+      throw new Error('Missing SUPABASE_ANON_KEY in environment variables');
+    }
+
+    _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+  
+  return _supabase;
+};
 
 // Initialize database - create tables if they don't exist
 // Note: In Supabase, tables are typically created via the dashboard or SQL migration
 // This function can be used to verify the tables exist or insert initial data
 export async function initializeDatabase() {
   console.log('Supabase database connection established');
-  
+
+  // Get the Supabase client
+  const supabase = getSupabaseClient();
+
   // Verify we can connect to Supabase
-  const { error } = await supabase.from('users').select('count').single();
-  
-  if (error && error.code !== '42P01') { // 42P01 is "UndefinedTable" error
-    console.error('Error connecting to Supabase:', error);
-    throw error;
+  try {
+    const { error } = await supabase.from('users').select('count').single();
+    
+    if (error) {
+      if (error.code === '42P01') { // 42P01 is "UndefinedTable" error
+        console.warn('⚠️  Database tables not found. Please run the schema setup in your Supabase dashboard.');
+      } else {
+        console.error('Error connecting to Supabase:', error);
+        throw error;
+      }
+    } else {
+      console.log('✅ Supabase connection verified');
+    }
+  } catch (err) {
+    console.warn('⚠️  Could not verify Supabase connection. Database tables may not be set up yet.');
+    console.warn('💡  Please run the schema setup in your Supabase dashboard.');
   }
-  
-  console.log('✅ Supabase connection verified');
 }
 
 // Export the generateId function for consistency with existing code
 export { generateId };
 
 // Export default for compatibility
-export default supabase;
+export default getSupabaseClient;

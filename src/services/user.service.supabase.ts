@@ -1,4 +1,4 @@
-import { supabase, User as SupabaseUser } from '../db/database-supabase';
+import { getSupabaseClient, User as SupabaseUser } from '../db/database-supabase';
 
 export interface User {
   id: string;
@@ -19,7 +19,7 @@ export class UserService {
       createdAt: now,
     };
 
-    const { data: insertedUser, error } = await supabase
+    const { data: insertedUser, error } = await getSupabaseClient()
       .from('users')
       .insert([{
         id: user.id,
@@ -40,7 +40,7 @@ export class UserService {
 
   // Get user by ID
   static async getById(id: string): Promise<User | null> {
-    const { data: user, error } = await supabase
+    const { data: user, error } = await getSupabaseClient()
       .from('users')
       .select('*')
       .eq('id', id)
@@ -56,7 +56,7 @@ export class UserService {
 
   // Get user by email
   static async getByEmail(email: string): Promise<User | null> {
-    const { data: user, error } = await supabase
+    const { data: user, error } = await getSupabaseClient()
       .from('users')
       .select('*')
       .eq('email', email)
@@ -72,7 +72,7 @@ export class UserService {
 
   // Get all users
   static async getAll(): Promise<User[]> {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabaseClient()
       .from('users')
       .select('*')
       .order('name', { ascending: true });
@@ -96,7 +96,7 @@ export class UserService {
     if (updates.email !== undefined) updateData.email = updates.email;
     if (updates.role !== undefined) updateData.role = updates.role;
 
-    const { data, error } = await supabase
+    const { data, error } = await getSupabaseClient()
       .from('users')
       .update(updateData)
       .eq('id', id)
@@ -113,7 +113,7 @@ export class UserService {
 
   // Delete user
   static async delete(id: string): Promise<boolean> {
-    const { error } = await supabase
+    const { error } = await getSupabaseClient()
       .from('users')
       .delete()
       .eq('id', id);

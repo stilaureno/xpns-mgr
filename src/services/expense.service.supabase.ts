@@ -1,4 +1,4 @@
-import { supabase, Expense as SupabaseExpense, ExpenseHistory } from '../db/database-supabase';
+import { getSupabaseClient, Expense as SupabaseExpense, ExpenseHistory } from '../db/database-supabase';
 import { BehaviorMachine } from "../behaviors/core";
 import { expenseBehavior, ExpenseData, ExpenseEvents, ExpenseState } from "../behaviors/expense.behavior";
 
@@ -22,7 +22,7 @@ export class ExpenseService {
     };
 
     // Insert into Supabase
-    const { data: insertedExpense, error } = await supabase
+    const { data: insertedExpense, error } = await getSupabaseClient()
       .from('expenses')
       .insert([{
         id: expense.id,
@@ -51,7 +51,7 @@ export class ExpenseService {
 
   // Get expense by ID
   static async getById(id: string): Promise<Expense | null> {
-    const { data: expense, error } = await supabase
+    const { data: expense, error } = await getSupabaseClient()
       .from('expenses')
       .select(`
         *,
@@ -77,7 +77,7 @@ export class ExpenseService {
     startDate?: Date;
     endDate?: Date;
   }): Promise<Expense[]> {
-    let query = supabase.from('expenses').select(`
+    let query = getSupabaseClient().from('expenses').select(`
       *,
       category:categories(name),
       user:users(name)
@@ -130,7 +130,7 @@ export class ExpenseService {
 
     updateData.updated_at = new Date().toISOString();
 
-    const { data, error } = await supabase
+    const { data, error } = await getSupabaseClient()
       .from('expenses')
       .update(updateData)
       .eq('id', id)
@@ -169,7 +169,7 @@ export class ExpenseService {
     const oldState = expense.state;
 
     // Update database
-    const { data, error } = await supabase
+    const { data, error } = await getSupabaseClient()
       .from('expenses')
       .update({ 
         state: newState,
@@ -192,7 +192,7 @@ export class ExpenseService {
 
   // Get expense history
   static async getHistory(expenseId: string) {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabaseClient()
       .from('expense_history')
       .select('*')
       .eq('expense_id', expenseId)
@@ -215,7 +215,7 @@ export class ExpenseService {
     eventData: any,
     performedBy: string
   ): Promise<void> {
-    const { error } = await supabase
+    const { error } = await getSupabaseClient()
       .from('expense_history')
       .insert([{
         expense_id: expenseId,
@@ -233,7 +233,7 @@ export class ExpenseService {
 
   // Delete expense
   static async delete(id: string): Promise<boolean> {
-    const { error } = await supabase
+    const { error } = await getSupabaseClient()
       .from('expenses')
       .delete()
       .eq('id', id);
@@ -268,10 +268,11 @@ export class ExpenseService {
   // Get statistics
   static async getStatistics(userId?: string, startDate?: Date, endDate?: Date) {
     // Build the base query with filters
-    let query = supabase
+    let query = getSupabaseClient()
       .from('expenses')
       .select(`
-        state
+        state,
+        amount
       `)
       .not('state', 'eq', 'archived'); // Exclude archived expenses from stats
 
@@ -356,7 +357,7 @@ export class ExpenseService {
   }): Promise<{ expenses: Expense[]; total: number; highlights: Map<string, string[]> }> {
     const { query, startDate, endDate, category, state, createdBy, limit = 50 } = options;
 
-    let supabaseQuery = supabase
+    let supabaseQuery = getSupabaseClient()
       .from('expenses')
       .select(`
         *,
@@ -457,7 +458,7 @@ export class ExpenseService {
     const lastDay = new Date(year, month, 0).getDate();
     const endDateStr = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-    let query = supabase
+    let query = getSupabaseClient()
       .from('expenses')
       .select(`
         date,

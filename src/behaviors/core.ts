@@ -1,12 +1,12 @@
 // Core behavior type definitions
-export interface Behavior<TState, TEvent, TEffect> {
+export interface Behavior<TState extends string, TEvent, TEffect> {
   id: string;
   initial: TState;
   transitions: TransitionMap<TState, TEvent>;
   effects?: EffectMap<TState, TEvent, TEffect>;
 }
 
-export type TransitionMap<TState, TEvent> = {
+export type TransitionMap<TState extends string, TEvent> = {
   [K in TState]?: {
     [E in keyof TEvent]?: {
       target: TState;
@@ -15,7 +15,7 @@ export type TransitionMap<TState, TEvent> = {
   };
 };
 
-export type EffectMap<TState, TEvent, TEffect> = {
+export type EffectMap<TState extends string, TEvent, TEffect> = {
   [K in TState]?: {
     onEnter?: (context: any) => Promise<TEffect | void>;
     onExit?: (context: any) => Promise<TEffect | void>;
@@ -35,7 +35,7 @@ export class BehaviorMachine<TState extends string, TEvent, TEffect, TData> {
   constructor(behavior: Behavior<TState, TEvent, TEffect>, initialData: TData, initialState?: TState) {
     this.behavior = behavior;
     // Use provided initial state, or try to get it from data if it has a 'state' property, otherwise use behavior.initial
-    const startState = initialState || (initialData as any)?.state || behavior.initial;
+    const startState = initialState || (initialData as any)?.state || behavior.initial as TState;
     this.context = {
       state: startState,
       data: initialData,
