@@ -14,7 +14,7 @@ echo ""
 export PATH="$HOME/.bun/bin:$PATH"
 
 # Change to project directory
-cd /root/bun
+cd /root/bun2
 
 # Check if MariaDB database exists
 DB_EXISTS=$(mysql -u root -e "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'expense_manager';" 2>/dev/null | grep expense_manager)
