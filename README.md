@@ -41,20 +41,36 @@ expense-manager/
 │   │   └── expense.behavior.ts
 │   ├── db/                 # Database layer
 │   │   ├── database.ts     # SQLite setup & helpers
+│   │   ├── database-supabase.ts # Supabase setup & helpers
 │   │   ├── migrate.ts      # Database migrations
 │   │   └── seed.ts         # Seed data
 │   ├── routes/             # API routes
-│   │   ├── expenses.ts     # Expense endpoints
-│   │   ├── categories.ts   # Category endpoints
-│   │   └── users.ts        # User endpoints
+│   │   ├── expenses.ts     # Expense endpoints (SQLite)
+│   │   ├── expenses.mariadb.ts # Expense endpoints (MariaDB)
+│   │   ├── expenses.supabase.ts # Expense endpoints (Supabase)
+│   │   ├── categories.ts   # Category endpoints (SQLite)
+│   │   ├── categories.mariadb.ts # Category endpoints (MariaDB)
+│   │   ├── categories.supabase.ts # Category endpoints (Supabase)
+│   │   ├── users.ts        # User endpoints (SQLite)
+│   │   ├── users.mariadb.ts # User endpoints (MariaDB)
+│   │   └── users.supabase.ts # User endpoints (Supabase)
 │   ├── services/           # Business logic
-│   │   ├── expense.service.ts
-│   │   ├── category.service.ts
-│   │   └── user.service.ts
-│   └── index.ts            # Application entry point
+│   │   ├── expense.service.ts # Expense service (SQLite)
+│   │   ├── expense.service.mariadb.ts # Expense service (MariaDB)
+│   │   ├── expense.service.supabase.ts # Expense service (Supabase)
+│   │   ├── category.service.ts # Category service (SQLite)
+│   │   ├── category.service.mariadb.ts # Category service (MariaDB)
+│   │   ├── category.service.supabase.ts # Category service (Supabase)
+│   │   ├── user.service.ts # User service (SQLite)
+│   │   ├── user.service.mariadb.ts # User service (MariaDB)
+│   │   └── user.service.supabase.ts # User service (Supabase)
+│   ├── index.ts            # Application entry point (SQLite)
+│   ├── index.mariadb.ts    # Application entry point (MariaDB)
+│   └── index.supabase.ts   # Application entry point (Supabase)
 ├── public/
 │   └── index.html          # Frontend UI
 ├── package.json
+├── supabase_schema.sql     # Supabase database schema
 └── tsconfig.json
 ```
 
@@ -67,6 +83,26 @@ expense-manager/
   curl -fsSL https://bun.sh/install | bash
   ```
 
+### Database Options
+
+This project supports multiple database backends:
+
+#### SQLite (Default)
+- Uses Bun's native SQLite support
+- Data stored in local `expenses.db` file
+- Best for development and single-user deployments
+
+#### MariaDB
+- Uses MySQL-compatible database
+- Better for multi-user environments
+- Configure connection in `.env` file
+
+#### Supabase (New!)
+- Uses PostgreSQL backend with real-time capabilities
+- Cloud-hosted solution with authentication and storage
+- Perfect for scalable applications
+- Requires Supabase account and configuration
+
 ### Installation
 
 1. **Install dependencies:**
@@ -74,19 +110,77 @@ expense-manager/
    bun install
    ```
 
-2. **Initialize the database:**
+2. **Choose your database:**
+
+   **For SQLite (default):**
+   ```bash
+   bun run db:migrate:sqlite
+   ```
+
+   **For MariaDB:**
    ```bash
    bun run db:migrate
    ```
 
-3. **Seed sample data:**
+   **For Supabase:**
+   - First, create a Supabase account at [supabase.com](https://supabase.com)
+   - Create a new project and copy your URL and anon key
+   - Set up your environment variables:
+     ```bash
+     SUPABASE_URL="your_project_url"
+     SUPABASE_ANON_KEY="your_anon_key"
+     ```
+   - Run the database schema by copying the content from `supabase_schema.sql` file and executing it in the Supabase SQL Editor:
+     1. Go to your Supabase dashboard
+     2. Navigate to the "SQL Editor" tab
+     3. Copy the content from `supabase_schema.sql` and run it
+   - No migration command needed for Supabase
+
+3. **Seed sample data (optional):**
+
+   **For SQLite:**
+   ```bash
+   bun run db:seed:sqlite
+   ```
+
+   **For MariaDB:**
    ```bash
    bun run db:seed
    ```
 
+   **For Supabase:** 
+   - Sample data can be added through the Supabase dashboard or API
+   - To migrate existing data from SQLite, you'll need the Service Role Key:
+     1. Go to your Supabase dashboard
+     2. Navigate to Project Settings > API
+     3. Copy the "Service role secret" (not the anon key)
+     4. Run the migration script: `SUPABASE_SERVICE_ROLE_KEY="your_key" bun run migrate-to-supabase.ts`
+     5. After migration, you may need to adjust Row Level Security (RLS) policies:
+        - Go to your Supabase SQL Editor
+        - Run these commands to disable RLS temporarily:
+          ```sql
+          ALTER TABLE public.users DISABLE ROW LEVEL SECURITY;
+          ALTER TABLE public.categories DISABLE ROW LEVEL SECURITY;
+          ALTER TABLE public.expenses DISABLE ROW LEVEL SECURITY;
+          ALTER TABLE public.expense_history DISABLE ROW LEVEL SECURITY;
+          ALTER TABLE public.receipts DISABLE ROW LEVEL SECURITY;
+          ```
+
 4. **Start the development server:**
+
+   **For SQLite:**
+   ```bash
+   bun run dev:sqlite
+   ```
+
+   **For MariaDB:**
    ```bash
    bun run dev
+   ```
+
+   **For Supabase:**
+   ```bash
+   SUPABASE_URL="your_project_url" SUPABASE_ANON_KEY="your_anon_key" bun run dev:supabase
    ```
 
 5. **Open your browser:**
