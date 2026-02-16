@@ -42,8 +42,8 @@ app.route("/api/expenses", expenses);
 app.route("/api/categories", categories);
 app.route("/api/users", users);
 
-// Serve static files (after API routes)
-app.use("/*", serveStatic({ root: "./public" }));
+// Note: Static files are handled by Vercel automatically based on the public directory
+// No need to serve them through the API route
 
 // 404 handler
 app.notFound((c) => {

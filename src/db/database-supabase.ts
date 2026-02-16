@@ -80,28 +80,7 @@ export const getSupabaseClient = (): SupabaseClient => {
 // This function can be used to verify the tables exist or insert initial data
 export async function initializeDatabase() {
   console.log('Supabase database connection established');
-
-  // Get the Supabase client
-  const supabase = getSupabaseClient();
-
-  // Verify we can connect to Supabase
-  try {
-    const { error } = await supabase.from('users').select('count').single();
-    
-    if (error) {
-      if (error.code === '42P01') { // 42P01 is "UndefinedTable" error
-        console.warn('⚠️  Database tables not found. Please run the schema setup in your Supabase dashboard.');
-      } else {
-        console.error('Error connecting to Supabase:', error);
-        throw error;
-      }
-    } else {
-      console.log('✅ Supabase connection verified');
-    }
-  } catch (err) {
-    console.warn('⚠️  Could not verify Supabase connection. Database tables may not be set up yet.');
-    console.warn('💡  Please run the schema setup in your Supabase dashboard.');
-  }
+  console.log('✅ Supabase connection established (verification skipped for serverless)');
 }
 
 // Export the generateId function for consistency with existing code

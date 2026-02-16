@@ -15,8 +15,16 @@
       "dest": "src/api.ts"
     },
     {
-      "src": "/(.*)",
+      "src": "/health",
       "dest": "src/api.ts"
+    },
+    {
+      "src": "/(.+)", 
+      "dest": "/public/$1"
+    },
+    {
+      "src": "/",
+      "dest": "/public/index.html"
     }
   ]
 }
