@@ -2788,15 +2788,107 @@
                 border-radius: 24px 24px 0 0 !important;
             }
         }
+
+        /* Phase 2: Android app shell */
+        .app-shell {
+            position: relative;
+            min-height: 100vh;
+            padding-bottom: 100px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .mobile-bottom-nav {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 130;
+            display: none;
+            justify-content: space-around;
+            align-items: center;
+            padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+            background: color-mix(in srgb, var(--md-surface) 90%, #fff 10%);
+            border-top: 1px solid var(--md-outline);
+            backdrop-filter: blur(18px);
+            box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.08);
+        }
+
+        .mobile-nav-item {
+            border: 0;
+            background: transparent;
+            color: var(--md-on-surface-variant);
+            border-radius: 16px;
+            min-width: 68px;
+            padding: 8px 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .mobile-nav-item .material-icons {
+            font-size: 22px;
+        }
+
+        .mobile-nav-item.active {
+            color: var(--md-primary);
+            background: var(--md-primary-container);
+        }
+
+        .mobile-fab {
+            position: fixed;
+            right: 18px;
+            bottom: calc(82px + env(safe-area-inset-bottom));
+            z-index: 131;
+            width: 58px;
+            height: 58px;
+            border-radius: 16px;
+            border: 0;
+            background: var(--md-primary);
+            color: var(--md-on-primary);
+            box-shadow: var(--md-shadow-2);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .mobile-fab .material-icons {
+            font-size: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .tabs-header {
+                display: none !important;
+            }
+
+            .header-actions .btn-primary {
+                display: none !important;
+            }
+
+            .mobile-bottom-nav,
+            .mobile-fab {
+                display: flex;
+            }
+        }
     </style>
 </head>
 <body>
+    <div class="app-shell">
     <header>
         <div class="header-content">
             <h1 onclick="openSettingsModal()" class="header-title" title="Open Settings">
                 <span class="material-icons" style="vertical-align: middle; font-size: 28px; margin-right: 8px;">account_balance_wallet</span>Expense Manager
             </h1>
-            <div style="display: flex; gap: 10px; align-items: center;">
+            <div class="header-actions">
                 <button 
                     class="btn btn-icon" 
                     onclick="openSearchModal()" 
@@ -3002,6 +3094,29 @@
             </div>
         </div>
     </div>
+
+    <button class="mobile-fab" id="mobileFab" onclick="openCreateModal()" title="Add expense">
+        <span class="material-icons">add</span>
+    </button>
+
+    <nav class="mobile-bottom-nav" aria-label="Bottom navigation">
+        <button class="mobile-nav-item active" id="mobileNavExpenses" onclick="switchTab('expenses')" title="Expenses">
+            <span class="material-icons">receipt_long</span>
+            <span>Expenses</span>
+        </button>
+        <button class="mobile-nav-item" id="mobileNavDailyTotals" onclick="switchTab('dailyTotals')" title="Daily Totals">
+            <span class="material-icons">insights</span>
+            <span>Totals</span>
+        </button>
+        <button class="mobile-nav-item" id="mobileNavSearch" onclick="openSearchModal()" title="Search">
+            <span class="material-icons">search</span>
+            <span>Search</span>
+        </button>
+        <button class="mobile-nav-item" id="mobileNavSettings" onclick="openSettingsModal()" title="Settings">
+            <span class="material-icons">settings</span>
+            <span>Settings</span>
+        </button>
+    </nav>
 
     <!-- Create Expense Modal (Simple) -->
     <div id="expenseModal" class="modal">
@@ -4603,6 +4718,8 @@
 
         function openSearchModal() {
             document.getElementById('searchModal').classList.add('active');
+            const mobileSearch = document.getElementById('mobileNavSearch');
+            if (mobileSearch) mobileSearch.classList.add('active');
             // Sync search value if desktop search has text
             const desktopSearch = document.getElementById('searchInput');
             const modalSearch = document.getElementById('searchInputModal');
@@ -4630,6 +4747,8 @@
 
         function closeSearchModal() {
             document.getElementById('searchModal').classList.remove('active');
+            const mobileSearch = document.getElementById('mobileNavSearch');
+            if (mobileSearch) mobileSearch.classList.remove('active');
         }
 
         function clearSearch() {
@@ -5194,6 +5313,22 @@
         }
 
         // Tab switching functionality
+        function updateMobileNavigation(tabName) {
+            const mobileTabMap = {
+                expenses: 'mobileNavExpenses',
+                dailyTotals: 'mobileNavDailyTotals'
+            };
+            ['mobileNavExpenses', 'mobileNavDailyTotals'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.remove('active');
+            });
+            const activeId = mobileTabMap[tabName];
+            if (activeId) {
+                const activeEl = document.getElementById(activeId);
+                if (activeEl) activeEl.classList.add('active');
+            }
+        }
+
         function switchTab(tabName) {
             // Hide all tab contents
             document.querySelectorAll('.tab-content').forEach(content => {
@@ -5215,6 +5350,8 @@
             if (selectedButton) {
                 selectedButton.classList.add('active');
             }
+
+            updateMobileNavigation(tabName);
             
             // Load daily totals if switching to that tab
             if (tabName === 'dailyTotals') {
@@ -5773,5 +5910,6 @@
             }
         });
     </script>
+    </div>
 </body>
 </html>
