@@ -3174,6 +3174,138 @@
             .filter-date-group {
                 display: none !important;
             }
+
+            /* Compact list-style expenses on mobile */
+            .mobile-cards-body {
+                gap: 6px;
+            }
+
+            .expense-card {
+                padding: 8px 10px;
+                border-radius: 12px;
+                position: relative;
+                overflow: visible;
+            }
+
+            .expense-list-row {
+                gap: 8px;
+                align-items: center;
+                display: flex;
+                justify-content: space-between;
+            }
+
+            .expense-row-left {
+                display: flex;
+                align-items: baseline;
+                gap: 8px;
+                min-width: 0;
+            }
+
+            .expense-row-title {
+                font-size: 14px;
+                line-height: 1.25;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-width: 34vw;
+                font-weight: 600;
+            }
+
+            .expense-row-date {
+                font-size: 11px;
+                color: var(--md-on-surface-variant);
+                white-space: nowrap;
+            }
+
+            .expense-row-right {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            }
+
+            .expense-card-description {
+                display: none;
+            }
+
+            .expense-card-amount {
+                font-size: 14px;
+                font-weight: 700;
+            }
+
+            .expense-card-meta {
+                display: none;
+            }
+
+            .expense-card-footer {
+                display: none;
+            }
+
+            .expense-card-actions .btn-icon {
+                width: 30px !important;
+                height: 30px !important;
+                min-width: 30px !important;
+                min-height: 30px !important;
+                border-radius: 9px !important;
+                padding: 0 !important;
+            }
+
+            .expense-card-actions .btn-icon .material-icons {
+                font-size: 15px !important;
+            }
+
+            .expense-menu-wrap {
+                position: relative;
+            }
+
+            .expense-menu-btn {
+                width: 28px;
+                height: 28px;
+                border-radius: 8px;
+                border: 1px solid var(--md-outline);
+                background: var(--md-surface-container-high);
+                color: var(--md-on-surface-variant);
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+            }
+
+            .expense-menu-btn .material-icons {
+                font-size: 18px;
+            }
+
+            .expense-row-menu {
+                position: absolute;
+                right: 0;
+                top: calc(100% + 6px);
+                min-width: 140px;
+                background: var(--md-surface);
+                border: 1px solid var(--md-outline);
+                border-radius: 10px;
+                box-shadow: var(--md-shadow-2);
+                z-index: 40;
+                display: none;
+                overflow: hidden;
+            }
+
+            .expense-row-menu.show {
+                display: block;
+            }
+
+            .expense-row-menu button {
+                width: 100%;
+                border: 0;
+                background: transparent;
+                text-align: left;
+                padding: 10px 12px;
+                font-size: 13px;
+                color: var(--md-on-surface);
+                cursor: pointer;
+            }
+
+            .expense-row-menu button:active {
+                background: var(--md-surface-container-high);
+            }
         }
 
         @media (min-width: 769px) {
@@ -4551,8 +4683,6 @@
 
         function renderExpensesCards(expenses) {
             return expenses.map(expense => {
-                const category = categories.find(c => c.id === expense.category);
-                const actions = getActions(expense);
                 const expenseDate = new Date(expense.date);
                 const expenseDateGMT8 = new Date(expenseDate.getTime() + (8 * 60 * 60 * 1000));
                 const expenseDateString = expenseDateGMT8.toISOString().split('T')[0];
@@ -4564,29 +4694,43 @@
                 });
                 const descriptionHtml = expense.description ? `<div class="expense-card-description">${expense.description}</div>` : '';
                 const isSelected = selectedExpenses.has(expense.id);
+                const menuId = `expenseMenu-${expense.id}`;
+                const menuItems = expense.state === 'active'
+                    ? `
+                        <button type="button" onclick="openEditModal('${expense.id}'); closeExpenseRowMenus();">Edit</button>
+                        <button type="button" onclick="archiveExpense('${expense.id}'); closeExpenseRowMenus();">Archive</button>
+                        <button type="button" onclick="deleteExpense('${expense.id}'); closeExpenseRowMenus();">Delete</button>
+                    `
+                    : `
+                        <button type="button" onclick="openEditModal('${expense.id}'); closeExpenseRowMenus();">Edit</button>
+                        <button type="button" onclick="restoreExpense('${expense.id}'); closeExpenseRowMenus();">Restore</button>
+                        <button type="button" onclick="deleteExpense('${expense.id}'); closeExpenseRowMenus();">Delete</button>
+                    `;
 
                 return `
                     <article class="expense-card ${isSelected ? 'expense-row-selected' : ''}" data-expense-id="${expense.id}">
-                        <div class="expense-card-header">
-                            <div>
-                                <div class="expense-card-title">${expense.title}</div>
+                        <div class="expense-list-row">
+                            <div class="expense-row-left">
+                                <div class="expense-row-title" title="${expense.title}">${expense.title}</div>
+                                <div class="expense-row-date">${dateDisplay}</div>
                                 ${descriptionHtml}
                             </div>
-                            <div class="expense-card-amount">${formatCurrency(expense.amount, expense.currency)}</div>
-                        </div>
-                        <div class="expense-card-meta">
-                            <span class="badge badge-${expense.state}" style="background: ${category?.color || '#6B7280'}20; color: ${category?.color || '#6B7280'}; border: 1px solid ${category?.color || '#6B7280'}40;">${category?.name || 'N/A'}</span>
-                            <span class="badge badge-${expense.state}">${expense.state}</span>
-                            <span class="date-cell">${dateDisplay}</span>
-                        </div>
-                        <div class="expense-card-footer">
-                            <label class="expense-card-select">
+                            <div class="expense-row-right">
+                                <div class="expense-card-amount">${formatCurrency(expense.amount, expense.currency)}</div>
+                                <label class="expense-card-select">
                                 <input type="checkbox" class="expense-checkbox" value="${expense.id}"
                                        ${isSelected ? 'checked' : ''}
                                        onchange="toggleExpenseSelection('${expense.id}', this.checked)">
-                                Select
-                            </label>
-                            <div class="expense-card-actions">${actions}</div>
+                                </label>
+                                <div class="expense-menu-wrap">
+                                    <button class="expense-menu-btn" type="button" onclick="toggleExpenseRowMenu('${menuId}', event)" title="More actions">
+                                        <span class="material-icons">more_vert</span>
+                                    </button>
+                                    <div class="expense-row-menu" id="${menuId}">
+                                        ${menuItems}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </article>
                 `;
@@ -5581,6 +5725,31 @@
                     row.classList.remove('expense-row-selected');
                 }
             });
+
+            document.querySelectorAll('.expense-card[data-expense-id]').forEach(card => {
+                const expenseId = card.getAttribute('data-expense-id');
+                if (selectedExpenses.has(expenseId)) {
+                    card.classList.add('expense-row-selected');
+                } else {
+                    card.classList.remove('expense-row-selected');
+                }
+            });
+        }
+
+        function closeExpenseRowMenus() {
+            document.querySelectorAll('.expense-row-menu').forEach(menu => menu.classList.remove('show'));
+        }
+
+        function toggleExpenseRowMenu(menuId, event) {
+            event.stopPropagation();
+            const targetMenu = document.getElementById(menuId);
+            if (!targetMenu) return;
+
+            const isOpen = targetMenu.classList.contains('show');
+            closeExpenseRowMenus();
+            if (!isOpen) {
+                targetMenu.classList.add('show');
+            }
         }
 
         function clearSelection() {
@@ -6328,6 +6497,9 @@
 
         // Close dropdown when clicking outside
         document.addEventListener('click', function(event) {
+            if (!event.target.closest('.expense-menu-wrap')) {
+                closeExpenseRowMenus();
+            }
             // Handle month dropdown
             const monthDropdown = document.getElementById('customMonthDropdown');
             const monthSelected = document.getElementById('monthDropdownSelected');
