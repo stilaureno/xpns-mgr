@@ -3093,11 +3093,20 @@
             .filter-icons-container {
                 display: flex !important;
                 flex-wrap: wrap;
-                gap: 6px !important;
-                padding: 0 !important;
+                justify-content: center;
+                align-items: center;
+                gap: 6px 8px !important;
+                padding: 0 8px !important;
                 background: transparent !important;
                 border-radius: 0 !important;
                 width: 100% !important;
+                margin: 0 auto;
+            }
+
+            .filter-icon-wrapper {
+                display: flex;
+                justify-content: center;
+                flex: 0 0 auto;
             }
 
             .filter-icon-btn {
@@ -3118,6 +3127,10 @@
                 padding: 2px !important;
             }
 
+            .mobile-date-filter-btn {
+                display: inline-flex !important;
+            }
+
             .filter-date-input {
                 min-height: 34px;
             }
@@ -3136,6 +3149,11 @@
                 padding: 4px 10px;
                 font-size: 12px;
                 opacity: 0.92;
+                justify-content: center;
+                width: auto;
+                max-width: none;
+                margin-left: 2px;
+                margin-right: 2px;
             }
 
             .mobile-select-all .material-icons {
@@ -3149,6 +3167,17 @@
 
             .mobile-select-inline {
                 display: inline-flex;
+                margin: 0 2px;
+            }
+
+            .filter-date-group {
+                display: none !important;
+            }
+        }
+
+        @media (min-width: 769px) {
+            .mobile-date-filter-btn {
+                display: none !important;
             }
         }
     </style>
@@ -3276,6 +3305,16 @@
                         title="Refresh"
                     >
                         <span class="material-icons">refresh</span>
+                    </button>
+
+                    <button
+                        class="filter-icon-btn mobile-date-filter-btn"
+                        onclick="openMobileDatePicker()"
+                        id="filterDateBtn"
+                        title="Filter by date"
+                    >
+                        <span class="material-icons">calendar_today</span>
+                        <span class="filter-badge" id="dateBadge" style="display: none;"></span>
                     </button>
 
                     <label class="mobile-select-all mobile-select-inline">
@@ -3783,6 +3822,7 @@
             if (dateInput) {
                 dateInput.value = todayString;
             }
+            updateDateFilterBadge();
 
             // Track last known date for automatic updates
             let lastKnownDate = todayString;
@@ -4217,6 +4257,7 @@
         // Handle date filter change - clear period filter when date is selected
         function onDateFilterChange() {
             const filterDate = document.getElementById('filterDate').value;
+            updateDateFilterBadge();
             if (filterDate) {
                 // Clear period filter when a specific date is selected
                 document.getElementById('filterPeriod').value = '';
@@ -4243,6 +4284,7 @@
         function clearDateFilter() {
             const todayString = getTodayGMT8();
             document.getElementById('filterDate').value = todayString;
+            updateDateFilterBadge();
             
             // Also reset period filter to "today" to match the date
             document.getElementById('filterPeriod').value = 'today';
@@ -4269,6 +4311,33 @@
             
             loadExpenses();
             loadStatistics();
+        }
+
+        function updateDateFilterBadge() {
+            const filterDate = document.getElementById('filterDate')?.value || '';
+            const badge = document.getElementById('dateBadge');
+            const btn = document.getElementById('filterDateBtn');
+            if (!badge || !btn) return;
+
+            if (filterDate) {
+                badge.style.display = 'block';
+                btn.style.borderColor = 'var(--primary)';
+            } else {
+                badge.style.display = 'none';
+                btn.style.borderColor = 'var(--gray-300)';
+            }
+        }
+
+        function openMobileDatePicker() {
+            const dateInput = document.getElementById('filterDate');
+            if (!dateInput) return;
+
+            if (typeof dateInput.showPicker === 'function') {
+                dateInput.showPicker();
+            } else {
+                dateInput.focus();
+                dateInput.click();
+            }
         }
 
         async function loadExpenses() {
