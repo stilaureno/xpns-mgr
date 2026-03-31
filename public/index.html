@@ -2921,6 +2921,33 @@
             display: none;
         }
 
+        .mobile-select-all .material-icons {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .mobile-select-text {
+            font-weight: 500;
+        }
+
+        .mobile-select-count {
+            font-weight: 600;
+            opacity: 0.95;
+        }
+
+        .mobile-select-pill-active {
+            color: var(--md-on-primary);
+            background: var(--md-primary);
+            border-color: var(--md-primary);
+            box-shadow: var(--md-shadow-1);
+        }
+
+        .mobile-select-pill-active .material-icons,
+        .mobile-select-pill-active .mobile-select-count {
+            opacity: 1;
+            color: var(--md-on-primary);
+        }
+
         .mobile-cards-body {
             display: flex;
             flex-direction: column;
@@ -3062,6 +3089,10 @@
                 opacity: 0.92;
             }
 
+            .mobile-select-all .material-icons {
+                font-size: 14px;
+            }
+
             .mobile-select-all input[type="checkbox"] {
                 width: 15px;
                 height: 15px;
@@ -3200,7 +3231,9 @@
 
                     <label class="mobile-select-all mobile-select-inline">
                         <input type="checkbox" id="mobileSelectAll" onchange="toggleSelectAll(this)">
-                        Select all
+                        <span class="material-icons">done_all</span>
+                        <span class="mobile-select-text">All</span>
+                        <span class="mobile-select-count" id="mobileSelectCount">0/0</span>
                     </label>
                 </div>
 
@@ -5372,6 +5405,8 @@
             const selectedCount = document.getElementById('selectedCount');
             const selectAllCheckbox = document.getElementById('selectAll');
             const mobileSelectAll = document.getElementById('mobileSelectAll');
+            const mobileSelectCount = document.getElementById('mobileSelectCount');
+            const mobileSelectPill = mobileSelectAll ? mobileSelectAll.closest('.mobile-select-all') : null;
             
             // Return early if elements don't exist yet
             if (!toolbar || !selectedCount) {
@@ -5390,11 +5425,18 @@
             if (checkboxes.length > 0 && selectAllCheckbox) {
                 const allChecked = Array.from(checkboxes).every(cb => cb.checked);
                 const someChecked = Array.from(checkboxes).some(cb => cb.checked);
+                const totalCount = checkboxes.length;
                 selectAllCheckbox.checked = allChecked;
                 selectAllCheckbox.indeterminate = someChecked && !allChecked;
                 if (mobileSelectAll) {
                     mobileSelectAll.checked = allChecked;
                     mobileSelectAll.indeterminate = someChecked && !allChecked;
+                }
+                if (mobileSelectCount) {
+                    mobileSelectCount.textContent = `${count}/${totalCount}`;
+                }
+                if (mobileSelectPill) {
+                    mobileSelectPill.classList.toggle('mobile-select-pill-active', count > 0);
                 }
             } else if (selectAllCheckbox) {
                 selectAllCheckbox.checked = false;
@@ -5402,6 +5444,12 @@
                 if (mobileSelectAll) {
                     mobileSelectAll.checked = false;
                     mobileSelectAll.indeterminate = false;
+                }
+                if (mobileSelectCount) {
+                    mobileSelectCount.textContent = '0/0';
+                }
+                if (mobileSelectPill) {
+                    mobileSelectPill.classList.remove('mobile-select-pill-active');
                 }
             }
             
