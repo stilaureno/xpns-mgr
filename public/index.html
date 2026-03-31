@@ -2809,6 +2809,35 @@
             }
         }
 
+        /* iPhone 16 Pro Max-style viewport tuning (430x932 / 440x956 classes) */
+        @media (min-width: 430px) and (max-width: 460px) and (min-height: 900px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                gap: 8px !important;
+            }
+
+            .stat-card {
+                padding: 12px !important;
+                min-height: 90px;
+            }
+
+            .stat-label {
+                font-size: 11px !important;
+                line-height: 1.2 !important;
+            }
+
+            .stat-value {
+                font-size: 1.2rem !important;
+                line-height: 1.25 !important;
+                letter-spacing: -0.2px;
+                word-break: break-word;
+            }
+
+            .stat-card.clickable .stat-label::after {
+                font-size: 10px !important;
+            }
+        }
+
         /* Phase 2: Android app shell */
         .app-shell {
             position: relative;
