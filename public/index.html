@@ -2901,7 +2901,8 @@
         .mobile-cards-toolbar {
             display: flex;
             justify-content: flex-end;
-            margin-bottom: 10px;
+            margin: 0 0 8px auto;
+            width: fit-content;
         }
 
         .mobile-select-all {
@@ -2914,6 +2915,10 @@
             border: 1px solid var(--md-outline);
             border-radius: 999px;
             padding: 6px 12px;
+        }
+
+        .mobile-select-inline {
+            display: none;
         }
 
         .mobile-cards-body {
@@ -2989,6 +2994,82 @@
         .expense-card-actions {
             display: flex;
             gap: 6px;
+        }
+
+        @media (max-width: 768px) {
+            /* Mobile declutter pass for Expenses tab */
+            #desktopSearchContainer {
+                display: none !important;
+            }
+
+            .controls {
+                padding: 12px !important;
+                margin-bottom: 12px !important;
+            }
+
+            .filters-row {
+                display: grid !important;
+                grid-template-columns: 1fr !important;
+                gap: 8px !important;
+                align-items: stretch !important;
+            }
+
+            .filter-icons-container {
+                display: flex !important;
+                flex-wrap: wrap;
+                gap: 6px !important;
+                padding: 0 !important;
+                background: transparent !important;
+                border-radius: 0 !important;
+                width: 100% !important;
+            }
+
+            .filter-icon-btn {
+                width: 36px !important;
+                height: 36px !important;
+                min-width: 36px !important;
+                min-height: 36px !important;
+                border-radius: 10px !important;
+            }
+
+            .filter-icon-btn .material-icons {
+                font-size: 19px !important;
+            }
+
+            .filter-date-group {
+                width: 100%;
+                max-width: 100%;
+                padding: 2px !important;
+            }
+
+            .filter-date-input {
+                min-height: 34px;
+            }
+
+            .expenses-count {
+                margin-top: 4px !important;
+                font-size: 12px !important;
+            }
+
+            .mobile-cards-toolbar {
+                margin-top: 2px;
+                margin-bottom: 6px;
+            }
+
+            .mobile-select-all {
+                padding: 4px 10px;
+                font-size: 12px;
+                opacity: 0.92;
+            }
+
+            .mobile-select-all input[type="checkbox"] {
+                width: 15px;
+                height: 15px;
+            }
+
+            .mobile-select-inline {
+                display: inline-flex;
+            }
         }
     </style>
 </head>
@@ -3116,6 +3197,11 @@
                     >
                         <span class="material-icons">refresh</span>
                     </button>
+
+                    <label class="mobile-select-all mobile-select-inline">
+                        <input type="checkbox" id="mobileSelectAll" onchange="toggleSelectAll(this)">
+                        Select all
+                    </label>
                 </div>
 
                 <!-- Date Filter -->
@@ -3180,12 +3266,6 @@
             </table>
         </div>
         <div class="mobile-expense-cards" id="expensesCards">
-            <div class="mobile-cards-toolbar">
-                <label class="mobile-select-all">
-                    <input type="checkbox" id="mobileSelectAll" onchange="toggleSelectAll(this)">
-                    Select all
-                </label>
-            </div>
             <div id="expensesCardsBody" class="mobile-cards-body">
                 <!-- Mobile cards will be loaded here -->
             </div>
