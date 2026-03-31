@@ -2878,6 +2878,117 @@
             .mobile-fab {
                 display: flex;
             }
+
+            .expenses-table {
+                display: none !important;
+            }
+
+            .mobile-expense-cards {
+                display: block;
+            }
+        }
+
+        @media (min-width: 769px) {
+            .mobile-expense-cards {
+                display: none;
+            }
+        }
+
+        .mobile-expense-cards {
+            margin-top: 12px;
+        }
+
+        .mobile-cards-toolbar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 10px;
+        }
+
+        .mobile-select-all {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--md-on-surface-variant);
+            background: var(--md-surface-container-high);
+            border: 1px solid var(--md-outline);
+            border-radius: 999px;
+            padding: 6px 12px;
+        }
+
+        .mobile-cards-body {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .expense-card {
+            background: var(--md-surface);
+            border: 1px solid var(--md-outline);
+            border-radius: 16px;
+            padding: 12px;
+            box-shadow: var(--md-shadow-1);
+        }
+
+        .expense-card.expense-row-selected {
+            border-color: var(--md-primary);
+            background: #f2ebfb !important;
+        }
+
+        .expense-card-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .expense-card-title {
+            font-weight: 600;
+            color: var(--md-on-surface);
+            font-size: 15px;
+            line-height: 1.3;
+        }
+
+        .expense-card-description {
+            margin-top: 4px;
+            font-size: 12px;
+            color: var(--md-on-surface-variant);
+        }
+
+        .expense-card-amount {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--md-on-surface);
+            white-space: nowrap;
+        }
+
+        .expense-card-meta {
+            margin-top: 10px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .expense-card-footer {
+            margin-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .expense-card-select {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--md-on-surface-variant);
+        }
+
+        .expense-card-actions {
+            display: flex;
+            gap: 6px;
         }
     </style>
 </head>
@@ -3067,6 +3178,17 @@
                     <!-- Expenses will be loaded here -->
                 </tbody>
             </table>
+        </div>
+        <div class="mobile-expense-cards" id="expensesCards">
+            <div class="mobile-cards-toolbar">
+                <label class="mobile-select-all">
+                    <input type="checkbox" id="mobileSelectAll" onchange="toggleSelectAll(this)">
+                    Select all
+                </label>
+            </div>
+            <div id="expensesCardsBody" class="mobile-cards-body">
+                <!-- Mobile cards will be loaded here -->
+            </div>
         </div>
             </div>
 
@@ -3391,6 +3513,26 @@
         // Load total view mode from localStorage, default to 'allTime' if not set
         let totalViewMode = localStorage.getItem('totalViewMode') || 'allTime';
 
+        function getUniqueCategoriesByName(categoryList = categories) {
+            const uniqueMap = new Map();
+            categoryList.forEach(cat => {
+                if (!cat?.name) return;
+                const normalizedName = cat.name.trim().toLowerCase();
+                if (!normalizedName) return;
+                if (!uniqueMap.has(normalizedName)) {
+                    uniqueMap.set(normalizedName, cat);
+                }
+            });
+
+            return Array.from(uniqueMap.values()).sort((a, b) => {
+                const aName = a.name.toLowerCase();
+                const bName = b.name.toLowerCase();
+                if (aName === 'uncategorized') return -1;
+                if (bName === 'uncategorized') return 1;
+                return a.name.localeCompare(b.name);
+            });
+        }
+
         // Get current date in GMT+8 timezone (YYYY-MM-DD format)
         function getTodayGMT8() {
             const now = new Date();
@@ -3580,6 +3722,8 @@
                     if (b.name.toLowerCase() === 'uncategorized') return 1;
                     return a.name.localeCompare(b.name);
                 });
+
+                const uniqueCategories = getUniqueCategoriesByName(categories);
                 
                 console.log('Categories after ensuring Uncategorized:', categories);
                 
@@ -3587,7 +3731,7 @@
                 const categoryDropdown = document.getElementById('categoryDropdown');
                 if (categoryDropdown) {
                     categoryDropdown.innerHTML = '<button type="button" class="dropdown-item active" onclick="selectFilter(\'category\', \'\', \'All Categories\')">All Categories</button>';
-                    categories.forEach(cat => {
+                    uniqueCategories.forEach(cat => {
                         categoryDropdown.innerHTML += `<button type="button" class="dropdown-item" onclick="selectFilter('category', '${cat.id}', '${cat.name}')">${cat.name}</button>`;
                     });
                 }
@@ -3596,7 +3740,7 @@
                 const categorySelects = document.querySelectorAll('#expenseCategory, #editExpenseCategory');
                 categorySelects.forEach(select => {
                     select.innerHTML = '<option value="">Select category</option>';
-                    categories.forEach(cat => {
+                    uniqueCategories.forEach(cat => {
                         select.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
                     });
                 });
@@ -4032,19 +4176,19 @@
                 allExpenses = expenses;
                 
                 const tbody = document.getElementById('expensesBody');
+                const cardsBody = document.getElementById('expensesCardsBody');
                 
                 if (expenses.length === 0) {
-                    tbody.innerHTML = `
-                        <tr style="display: block;">
-                            <td colspan="7" style="display: block; padding: 0; border: none;">
-                                <div class="empty-state">
-                                    <div class="empty-state-icon"><span class="material-icons" style="font-size: 64px; color: var(--gray-400);">receipt_long</span></div>
-                                    <h3>No expenses found</h3>
-                                    <p>Create your first expense to get started</p>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
+                    tbody.innerHTML = renderExpensesEmptyState('receipt_long', 'No expenses found', 'Create your first expense to get started');
+                    if (cardsBody) {
+                        cardsBody.innerHTML = `
+                            <div class="empty-state">
+                                <div class="empty-state-icon"><span class="material-icons" style="font-size: 64px; color: var(--gray-400);">receipt_long</span></div>
+                                <h3>No expenses found</h3>
+                                <p>Create your first expense to get started</p>
+                            </div>
+                        `;
+                    }
                     return;
                 }
                 
@@ -4079,69 +4223,18 @@
                 }
                 
                 if (filteredExpenses.length === 0 && expenses.length > 0) {
-                    tbody.innerHTML = `
-                        <tr style="display: block;">
-                            <td colspan="6" style="display: block; padding: 40px; text-align: center; border: none;">
-                                <div class="empty-state">
-                                    <div class="empty-state-icon"><span class="material-icons" style="font-size: 64px; color: var(--gray-400);">search_off</span></div>
-                                    <h3>No expenses match your search</h3>
-                                    <p>Try adjusting your search terms or filters</p>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
+                    renderExpensesView([]);
                     return;
                 }
                 
-                tbody.innerHTML = filteredExpenses.map(expense => {
-                    const category = categories.find(c => c.id === expense.category);
-                    const actions = getActions(expense);
-                    const expenseDate = new Date(expense.date);
-                    // Convert expense date to GMT+8 date string for comparison
-                    const expenseDateGMT8 = new Date(expenseDate.getTime() + (8 * 60 * 60 * 1000));
-                    const expenseDateString = expenseDateGMT8.toISOString().split('T')[0];
-                    const isToday = isTodayGMT8(expenseDateString);
-                    const dateDisplay = isToday ? 'Today' : expenseDate.toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric', 
-                        year: expenseDate.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined 
-                    });
-                    
-                    const descriptionHtml = expense.description ? `<span class="description">${expense.description}</span>` : '';
-                const isSelected = selectedExpenses.has(expense.id);
-                return `
-                        <tr class="${isSelected ? 'expense-row-selected' : ''}" data-expense-id="${expense.id}">
-                            <td>
-                                <input type="checkbox" class="expense-checkbox" value="${expense.id}" 
-                                       ${isSelected ? 'checked' : ''} 
-                                       onchange="toggleExpenseSelection('${expense.id}', this.checked)">
-                            </td>
-                            <td data-label="Title" class="title-cell">
-                                ${expense.title}
-                                ${descriptionHtml}
-                            </td>
-                            <td data-label="Amount" class="amount-cell">${formatCurrency(expense.amount, expense.currency)}</td>
-                            <td data-label="Category" class="category-cell">
-                                <span class="badge badge-${expense.state}" style="background: ${category?.color || '#6B7280'}20; color: ${category?.color || '#6B7280'}; border: 1px solid ${category?.color || '#6B7280'}40;">
-                                    ${category?.name || 'N/A'}
-                                </span>
-                            </td>
-                            <td data-label="Date" class="date-cell">${dateDisplay}</td>
-                            <td data-label="Status"><span class="badge badge-${expense.state}">${expense.state}</span></td>
-                            <td data-label="Actions">
-                                <div class="action-buttons">
-                                    ${actions}
-                                </div>
-                            </td>
-                        </tr>
-                    `;
-                }).join('');
+                renderExpensesView(filteredExpenses);
                 
                 // Update selection UI after loading
                 updateSelectionUI();
             } catch (error) {
                 console.error('Error loading expenses:', error);
                 const tbody = document.getElementById('expensesBody');
+                const cardsBody = document.getElementById('expensesCardsBody');
                 tbody.innerHTML = `
                     <tr style="display: block;">
                         <td colspan="7" style="display: block; text-align: center; padding: 40px; color: #EF4444; border: none;">
@@ -4151,6 +4244,15 @@
                         </td>
                     </tr>
                 `;
+                if (cardsBody) {
+                    cardsBody.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon"><span class="material-icons" style="font-size: 64px; color: #EF4444;">error_outline</span></div>
+                            <h3>Error loading expenses</h3>
+                            <p>${error.message}</p>
+                        </div>
+                    `;
+                }
             }
         }
 
@@ -4169,6 +4271,130 @@
             }
             
             return actions.join('');
+        }
+
+        function renderExpensesRows(expenses) {
+            return expenses.map(expense => {
+                const category = categories.find(c => c.id === expense.category);
+                const actions = getActions(expense);
+                const expenseDate = new Date(expense.date);
+                const expenseDateGMT8 = new Date(expenseDate.getTime() + (8 * 60 * 60 * 1000));
+                const expenseDateString = expenseDateGMT8.toISOString().split('T')[0];
+                const isToday = isTodayGMT8(expenseDateString);
+                const dateDisplay = isToday ? 'Today' : expenseDate.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: expenseDate.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+                });
+                const descriptionHtml = expense.description ? `<span class="description">${expense.description}</span>` : '';
+                const isSelected = selectedExpenses.has(expense.id);
+                return `
+                    <tr class="${isSelected ? 'expense-row-selected' : ''}" data-expense-id="${expense.id}">
+                        <td>
+                            <input type="checkbox" class="expense-checkbox" value="${expense.id}"
+                                   ${isSelected ? 'checked' : ''}
+                                   onchange="toggleExpenseSelection('${expense.id}', this.checked)">
+                        </td>
+                        <td data-label="Title" class="title-cell">
+                            ${expense.title}
+                            ${descriptionHtml}
+                        </td>
+                        <td data-label="Amount" class="amount-cell">${formatCurrency(expense.amount, expense.currency)}</td>
+                        <td data-label="Category" class="category-cell">
+                            <span class="badge badge-${expense.state}" style="background: ${category?.color || '#6B7280'}20; color: ${category?.color || '#6B7280'}; border: 1px solid ${category?.color || '#6B7280'}40;">
+                                ${category?.name || 'N/A'}
+                            </span>
+                        </td>
+                        <td data-label="Date" class="date-cell">${dateDisplay}</td>
+                        <td data-label="Status"><span class="badge badge-${expense.state}">${expense.state}</span></td>
+                        <td data-label="Actions">
+                            <div class="action-buttons">
+                                ${actions}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderExpensesCards(expenses) {
+            return expenses.map(expense => {
+                const category = categories.find(c => c.id === expense.category);
+                const actions = getActions(expense);
+                const expenseDate = new Date(expense.date);
+                const expenseDateGMT8 = new Date(expenseDate.getTime() + (8 * 60 * 60 * 1000));
+                const expenseDateString = expenseDateGMT8.toISOString().split('T')[0];
+                const isToday = isTodayGMT8(expenseDateString);
+                const dateDisplay = isToday ? 'Today' : expenseDate.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: expenseDate.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+                });
+                const descriptionHtml = expense.description ? `<div class="expense-card-description">${expense.description}</div>` : '';
+                const isSelected = selectedExpenses.has(expense.id);
+
+                return `
+                    <article class="expense-card ${isSelected ? 'expense-row-selected' : ''}" data-expense-id="${expense.id}">
+                        <div class="expense-card-header">
+                            <div>
+                                <div class="expense-card-title">${expense.title}</div>
+                                ${descriptionHtml}
+                            </div>
+                            <div class="expense-card-amount">${formatCurrency(expense.amount, expense.currency)}</div>
+                        </div>
+                        <div class="expense-card-meta">
+                            <span class="badge badge-${expense.state}" style="background: ${category?.color || '#6B7280'}20; color: ${category?.color || '#6B7280'}; border: 1px solid ${category?.color || '#6B7280'}40;">${category?.name || 'N/A'}</span>
+                            <span class="badge badge-${expense.state}">${expense.state}</span>
+                            <span class="date-cell">${dateDisplay}</span>
+                        </div>
+                        <div class="expense-card-footer">
+                            <label class="expense-card-select">
+                                <input type="checkbox" class="expense-checkbox" value="${expense.id}"
+                                       ${isSelected ? 'checked' : ''}
+                                       onchange="toggleExpenseSelection('${expense.id}', this.checked)">
+                                Select
+                            </label>
+                            <div class="expense-card-actions">${actions}</div>
+                        </div>
+                    </article>
+                `;
+            }).join('');
+        }
+
+        function renderExpensesEmptyState(icon, title, description) {
+            return `
+                <tr style="display: block;">
+                    <td colspan="7" style="display: block; padding: 0; border: none;">
+                        <div class="empty-state">
+                            <div class="empty-state-icon"><span class="material-icons" style="font-size: 64px; color: var(--gray-400);">${icon}</span></div>
+                            <h3>${title}</h3>
+                            <p>${description}</p>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function renderExpensesView(expenses) {
+            const tbody = document.getElementById('expensesBody');
+            const cardsBody = document.getElementById('expensesCardsBody');
+            if (!tbody || !cardsBody) return;
+
+            if (!expenses.length) {
+                const emptyHtml = renderExpensesEmptyState('search_off', 'No expenses match your search', 'Try adjusting your search terms or filters');
+                tbody.innerHTML = emptyHtml;
+                cardsBody.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon"><span class="material-icons" style="font-size: 64px; color: var(--gray-400);">search_off</span></div>
+                        <h3>No expenses match your search</h3>
+                        <p>Try adjusting your search terms or filters</p>
+                    </div>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = renderExpensesRows(expenses);
+            cardsBody.innerHTML = renderExpensesCards(expenses);
         }
 
         function openCreateModal() {
@@ -4250,8 +4476,9 @@
                 // Ensure category dropdown is populated
                 const categorySelect = document.getElementById('editExpenseCategory');
                 if (categorySelect.options.length <= 1 && categories.length > 0) {
+                    const uniqueCategories = getUniqueCategoriesByName(categories);
                     categorySelect.innerHTML = '<option value="">Select category</option>';
-                    categories.forEach(cat => {
+                    uniqueCategories.forEach(cat => {
                         categorySelect.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
                     });
                 }
@@ -4390,8 +4617,9 @@
 
         function renderCategoriesList() {
             const listDiv = document.getElementById('categoriesList');
+            const uniqueCategories = getUniqueCategoriesByName(categories);
             
-            if (categories.length === 0) {
+            if (uniqueCategories.length === 0) {
                 listDiv.innerHTML = `
                     <div style="text-align: center; padding: 20px; color: var(--gray-500);">
                         <p style="margin: 0; font-size: 14px;">No categories yet</p>
@@ -4400,7 +4628,7 @@
                 return;
             }
 
-            listDiv.innerHTML = categories.map(cat => {
+            listDiv.innerHTML = uniqueCategories.map(cat => {
                 const isProtected = cat.name.toLowerCase() === 'uncategorized';
                 return `
                     <div class="category-item ${isProtected ? 'protected' : ''}" data-category-id="${cat.id}">
@@ -4978,6 +5206,7 @@
         // Client-side search filtering (for main table)
         function filterExpenses() {
             const tbody = document.getElementById('expensesBody');
+            const cardsBody = document.getElementById('expensesCardsBody');
             if (!allExpenses || allExpenses.length === 0) return;
             
             // Get search term from either input
@@ -5013,64 +5242,21 @@
             if (countEl) countEl.textContent = countText;
             
                 if (filteredExpenses.length === 0) {
-                    tbody.innerHTML = `
-                        <tr style="display: block;">
-                            <td colspan="7" style="display: block; padding: 40px; text-align: center; border: none;">
-                                <div class="empty-state">
-                                    <div class="empty-state-icon"><span class="material-icons" style="font-size: 64px; color: var(--gray-400);">search_off</span></div>
-                                    <h3>No expenses match your search</h3>
-                                    <p>Try adjusting your search terms or filters</p>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
+                    tbody.innerHTML = renderExpensesEmptyState('search_off', 'No expenses match your search', 'Try adjusting your search terms or filters');
+                    if (cardsBody) {
+                        cardsBody.innerHTML = `
+                            <div class="empty-state">
+                                <div class="empty-state-icon"><span class="material-icons" style="font-size: 64px; color: var(--gray-400);">search_off</span></div>
+                                <h3>No expenses match your search</h3>
+                                <p>Try adjusting your search terms or filters</p>
+                            </div>
+                        `;
+                    }
                     return;
                 }
             
             // Re-render expenses
-            tbody.innerHTML = filteredExpenses.map(expense => {
-                const category = categories.find(c => c.id === expense.category);
-                const actions = getActions(expense);
-                const expenseDateObj = new Date(expense.date);
-                // Convert expense date to GMT+8 date string for comparison
-                const expenseDateGMT8 = new Date(expenseDateObj.getTime() + (8 * 60 * 60 * 1000));
-                const expenseDateString = expenseDateGMT8.toISOString().split('T')[0];
-                const isToday = isTodayGMT8(expenseDateString);
-                const dateDisplay = isToday ? 'Today' : expenseDateObj.toLocaleDateString('en-US', { 
-                    month: 'short', 
-                    day: 'numeric', 
-                    year: expenseDateObj.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined 
-                });
-                
-                const descriptionHtml = expense.description ? `<span class="description">${expense.description}</span>` : '';
-                const isSelected = selectedExpenses.has(expense.id);
-                return `
-                    <tr class="${isSelected ? 'expense-row-selected' : ''}" data-expense-id="${expense.id}">
-                        <td>
-                            <input type="checkbox" class="expense-checkbox" value="${expense.id}" 
-                                   ${isSelected ? 'checked' : ''} 
-                                   onchange="toggleExpenseSelection('${expense.id}', this.checked)">
-                        </td>
-                        <td data-label="Title" class="title-cell">
-                            ${expense.title}
-                            ${descriptionHtml}
-                        </td>
-                        <td data-label="Amount" class="amount-cell">${formatCurrency(expense.amount, expense.currency)}</td>
-                        <td data-label="Category" class="category-cell">
-                            <span class="badge badge-${expense.state}" style="background: ${category?.color || '#6B7280'}20; color: ${category?.color || '#6B7280'}; border: 1px solid ${category?.color || '#6B7280'}40;">
-                                ${category?.name || 'N/A'}
-                            </span>
-                        </td>
-                        <td data-label="Date" class="date-cell">${dateDisplay}</td>
-                        <td data-label="Status"><span class="badge badge-${expense.state}">${expense.state}</span></td>
-                        <td data-label="Actions">
-                            <div class="action-buttons">
-                                ${actions}
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
+            renderExpensesView(filteredExpenses);
             
             // Update selection UI after filtering
             updateSelectionUI();
@@ -5105,6 +5291,7 @@
             const toolbar = document.getElementById('bulkActionsToolbar');
             const selectedCount = document.getElementById('selectedCount');
             const selectAllCheckbox = document.getElementById('selectAll');
+            const mobileSelectAll = document.getElementById('mobileSelectAll');
             
             // Return early if elements don't exist yet
             if (!toolbar || !selectedCount) {
@@ -5125,9 +5312,17 @@
                 const someChecked = Array.from(checkboxes).some(cb => cb.checked);
                 selectAllCheckbox.checked = allChecked;
                 selectAllCheckbox.indeterminate = someChecked && !allChecked;
+                if (mobileSelectAll) {
+                    mobileSelectAll.checked = allChecked;
+                    mobileSelectAll.indeterminate = someChecked && !allChecked;
+                }
             } else if (selectAllCheckbox) {
                 selectAllCheckbox.checked = false;
                 selectAllCheckbox.indeterminate = false;
+                if (mobileSelectAll) {
+                    mobileSelectAll.checked = false;
+                    mobileSelectAll.indeterminate = false;
+                }
             }
             
             // Update row highlighting
@@ -5278,8 +5473,9 @@
             await originalLoadCategories();
             const bulkCategorySelect = document.getElementById('bulkCategoryChange');
             if (bulkCategorySelect) {
+                const uniqueCategories = getUniqueCategoriesByName(categories);
                 bulkCategorySelect.innerHTML = '<option value="">Change Category...</option>';
-                categories.forEach(cat => {
+                uniqueCategories.forEach(cat => {
                     bulkCategorySelect.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
                 });
             }
