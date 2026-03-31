@@ -2075,12 +2075,15 @@
             }
 
             .date-range-inputs {
-                flex-direction: column;
-                gap: 10px;
+                flex-direction: row;
+                flex-wrap: nowrap;
+                gap: 8px;
             }
 
             .date-input-group {
-                width: 100%;
+                width: auto;
+                flex: 1;
+                min-width: 0;
             }
 
             .date-input-group input {
