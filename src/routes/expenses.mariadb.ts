@@ -152,6 +152,7 @@ expenses.post("/", async (c) => {
       currency: body.currency || "PHP",
       category: body.category,
       date: new Date(body.date),
+      paymentMethod: body.paymentMethod || "cash",
       createdBy: body.createdBy,
       receipts: body.receipts || [],
       metadata: body.metadata || {},
@@ -175,6 +176,7 @@ expenses.patch("/:id", async (c) => {
     if (body.amount) updates.amount = parseFloat(body.amount);
     if (body.category) updates.category = body.category;
     if (body.date) updates.date = new Date(body.date);
+    if (body.paymentMethod) updates.paymentMethod = body.paymentMethod;
 
     const expense = await ExpenseService.update(id, updates);
 

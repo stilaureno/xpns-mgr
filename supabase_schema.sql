@@ -31,6 +31,7 @@ create table if not exists expenses (
   category_id uuid references categories(id),
   date timestamp with time zone not null,
   state text not null,
+  payment_method text default 'cash',
   created_by uuid not null references users(id),
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null

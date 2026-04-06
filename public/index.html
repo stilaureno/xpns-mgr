@@ -3731,9 +3731,25 @@
                 </div>
 
                 <div class="form-group">
+                    <label>Payment Type</label>
+                    <select id="editExpensePaymentMethod">
+                        <option value="cash" selected>Cash</option>
+                        <option value="credit">Credit</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
                     <label>User *</label>
                     <select id="editExpenseUser" required>
                         <option value="">Select user</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Payment Type</label>
+                    <select id="expensePaymentMethod">
+                        <option value="cash" selected>Cash</option>
+                        <option value="credit">Credit</option>
                     </select>
                 </div>
 
@@ -4858,6 +4874,7 @@
                 const expenseDateGMT8 = new Date(expenseDate.getTime() + (8 * 60 * 60 * 1000));
                 document.getElementById('editExpenseDate').value = expenseDateGMT8.toISOString().split('T')[0];
                 document.getElementById('editExpenseUser').value = expense.createdBy;
+                document.getElementById('editExpensePaymentMethod').value = expense.paymentMethod || 'cash';
                 
                 // Ensure category dropdown is populated
                 const categorySelect = document.getElementById('editExpenseCategory');
@@ -5158,8 +5175,18 @@
             // Ensure Uncategorized exists (in case it wasn't created during load)
             await ensureUncategorizedCategory();
             
+            // Ensure user is loaded
+            if (!users || users.length === 0) {
+                await loadUsers();
+            }
+            
             // Set defaults for quick entry
-            const defaultUser = users.length > 0 ? users[0].id : '';
+            const defaultUser = users.length > 0 ? users[0].id : null;
+            
+            if (!defaultUser) {
+                alert('No user found. Please refresh the page.');
+                return;
+            }
             
             // Find "Uncategorized" category (case-insensitive search)
             let defaultCategory = '';
@@ -5192,6 +5219,7 @@
                 currency: 'PHP', // Default currency
                 category: defaultCategory,
                 date: expenseDate, // Use selected date from calendar picker
+                paymentMethod: document.getElementById('expensePaymentMethod').value || 'cash',
                 createdBy: defaultUser,
             };
             
@@ -5238,6 +5266,7 @@
                 currency: document.getElementById('editExpenseCurrency').value,
                 category: document.getElementById('editExpenseCategory').value,
                 date: document.getElementById('editExpenseDate').value,
+                paymentMethod: document.getElementById('editExpensePaymentMethod').value,
             };
             
             try {

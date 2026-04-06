@@ -16,6 +16,7 @@ export class ExpenseService {
     const expense: Expense = {
       ...data,
       id: crypto.randomUUID(), // Using crypto.randomUUID() for consistent ID generation
+      paymentMethod: data.paymentMethod || 'cash',
       state: "draft", // Default state for new expenses
       createdAt: now,
       updatedAt: now,
@@ -33,6 +34,7 @@ export class ExpenseService {
         category_id: expense.category,
         date: expense.date.toISOString(),
         state: expense.state,
+        payment_method: expense.paymentMethod,
         created_by: expense.createdBy
       }])
       .select()
@@ -127,6 +129,7 @@ export class ExpenseService {
     if (updates.amount !== undefined) updateData.amount = updates.amount;
     if (updates.category !== undefined) updateData.category_id = updates.category;
     if (updates.date !== undefined) updateData.date = updates.date.toISOString();
+    if (updates.paymentMethod !== undefined) updateData.payment_method = updates.paymentMethod;
 
     updateData.updated_at = new Date().toISOString();
 
@@ -257,6 +260,7 @@ export class ExpenseService {
       category: row.category_id,
       date: new Date(row.date),
       state: row.state as ExpenseState,
+      paymentMethod: row.payment_method || 'cash',
       createdBy: row.created_by,
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),

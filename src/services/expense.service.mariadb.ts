@@ -17,14 +17,15 @@ export class ExpenseService {
     const expense: Expense = {
       ...data,
       id,
+      paymentMethod: data.paymentMethod || 'cash',
       state: "active", // Daily expenses are immediately active
       createdAt: now,
       updatedAt: now,
     };
 
     await pool.execute(
-      `INSERT INTO expenses (id, title, description, amount, currency, category_id, date, state, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO expenses (id, title, description, amount, currency, category_id, date, state, payment_method, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         expense.id,
         expense.title,
@@ -34,6 +35,7 @@ export class ExpenseService {
         expense.category,
         expense.date,
         expense.state,
+        expense.paymentMethod,
         expense.createdBy
       ]
     );
@@ -125,6 +127,10 @@ export class ExpenseService {
     if (updates.date !== undefined) {
       fields.push("date = ?");
       values.push(updates.date);
+    }
+    if (updates.paymentMethod !== undefined) {
+      fields.push("payment_method = ?");
+      values.push(updates.paymentMethod);
     }
 
     if (fields.length === 0) return expense;
@@ -234,6 +240,7 @@ export class ExpenseService {
       category: row.category_id,
       date: new Date(row.date),
       state: row.state as ExpenseState,
+      paymentMethod: row.payment_method || 'cash',
       createdBy: row.created_by,
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),

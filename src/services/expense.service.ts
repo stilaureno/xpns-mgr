@@ -17,14 +17,15 @@ export class ExpenseService {
     const expense: Expense = {
       ...data,
       id,
+      paymentMethod: data.paymentMethod || 'cash',
       state: "active", // Daily expenses are immediately active
       createdAt: now,
       updatedAt: now,
     };
 
     const stmt = db.prepare(`
-      INSERT INTO expenses (id, title, description, amount, currency, category_id, date, state, created_by)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO expenses (id, title, description, amount, currency, category_id, date, state, payment_method, created_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
@@ -36,6 +37,7 @@ export class ExpenseService {
       expense.category,
       expense.date.toISOString(),
       expense.state,
+      expense.paymentMethod,
       expense.createdBy
     );
 
@@ -127,6 +129,10 @@ export class ExpenseService {
     if (updates.date !== undefined) {
       fields.push("date = ?");
       values.push(updates.date.toISOString());
+    }
+    if (updates.paymentMethod !== undefined) {
+      fields.push("payment_method = ?");
+      values.push(updates.paymentMethod);
     }
 
     fields.push("updated_at = ?");
@@ -232,6 +238,7 @@ export class ExpenseService {
       category: row.category_id,
       date: new Date(row.date),
       state: row.state as ExpenseState,
+      paymentMethod: row.payment_method || 'cash',
       createdBy: row.created_by,
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),

@@ -30,6 +30,7 @@ export interface ExpenseData {
   category: string;
   date: Date;
   createdBy: string;
+  paymentMethod: 'cash' | 'credit';
   receipts: string[];
   metadata?: Record<string, any>;
 }

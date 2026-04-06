@@ -43,6 +43,7 @@ export function initializeDatabase() {
       category_id TEXT,
       date DATETIME NOT NULL,
       state TEXT NOT NULL,
+      payment_method TEXT DEFAULT 'cash',
       created_by TEXT NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
