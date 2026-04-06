@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bun *)",
+      "Bash(sleep *)",
+      "Bash(node *)",
+      "Bash(pkill *)"
+    ]
+  },
+  "$version": 3
+}

@@ -3012,6 +3012,17 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
+            position: relative;
+            transition: transform 0.2s ease-out;
+            touch-action: pan-y;
+        }
+
+        .mobile-cards-body.swiping {
+            transition: none;
+        }
+
+        .mobile-cards-body .swipe-indicator {
+            display: none;
         }
 
         .expense-card {
@@ -4018,6 +4029,7 @@
             await loadUsers();
             await loadExpenses();
             await loadStatistics();
+            initializeSwipeControls();
 
             // Check for date change every minute (to catch midnight transitions)
             setInterval(() => {
@@ -4523,6 +4535,99 @@
                 dateInput.focus();
                 dateInput.click();
             }
+        }
+
+        // Navigate date by days (-1 for previous, +1 for next)
+        function navigateDate(days) {
+            const dateInput = document.getElementById('filterDate');
+            if (!dateInput) return;
+
+            const currentDate = dateInput.value || getTodayGMT8();
+            const [year, month, day] = currentDate.split('-').map(Number);
+            const date = new Date(Date.UTC(year, month - 1, day));
+            date.setUTCDate(date.getUTCDate() + days);
+
+            const newYear = date.getUTCFullYear();
+            const newMonth = String(date.getUTCMonth() + 1).padStart(2, '0');
+            const newDay = String(date.getUTCDate()).padStart(2, '0');
+            const newDateString = `${newYear}-${newMonth}-${newDay}`;
+
+            dateInput.value = newDateString;
+            updateDateFilterBadge();
+
+            // Clear period filter when navigating by date
+            document.getElementById('filterPeriod').value = '';
+            const periodDropdown = document.getElementById('periodDropdown');
+            if (periodDropdown) {
+                periodDropdown.querySelectorAll('.dropdown-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                periodDropdown.querySelector('.dropdown-item:first-child').classList.add('active');
+            }
+            const periodBadge = document.getElementById('periodBadge');
+            const periodBtn = document.getElementById('filterPeriodBtn');
+            if (periodBadge && periodBtn) {
+                periodBadge.style.display = 'none';
+                periodBtn.style.borderColor = 'var(--gray-300)';
+            }
+
+            loadExpenses();
+            loadStatistics();
+        }
+
+        // Swipe gesture handling for mobile date navigation
+        function initializeSwipeControls() {
+            const cardsBody = document.getElementById('expensesCardsBody');
+            if (!cardsBody) return;
+
+            let touchStartX = 0;
+            let touchStartY = 0;
+            let touchDeltaX = 0;
+            let isSwiping = false;
+            const SWIPE_THRESHOLD = 50; // Minimum swipe distance in pixels
+
+            cardsBody.addEventListener('touchstart', (e) => {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                touchDeltaX = 0;
+                isSwiping = false;
+            }, { passive: true });
+
+            cardsBody.addEventListener('touchmove', (e) => {
+                const currentX = e.touches[0].clientX;
+                const currentY = e.touches[0].clientY;
+                touchDeltaX = currentX - touchStartX;
+                const deltaY = Math.abs(currentY - touchStartY);
+
+                // Only handle horizontal swipes
+                if (Math.abs(touchDeltaX) > deltaY && Math.abs(touchDeltaX) > 10) {
+                    isSwiping = true;
+                    cardsBody.classList.add('swiping');
+
+                    // Add resistance to swipe
+                    const resistance = 0.6;
+                    const translateX = touchDeltaX * resistance;
+                    cardsBody.style.transform = `translateX(${translateX}px)`;
+                }
+            }, { passive: true });
+
+            cardsBody.addEventListener('touchend', (e) => {
+                cardsBody.classList.remove('swiping');
+                cardsBody.style.transform = '';
+
+                if (isSwiping) {
+                    if (touchDeltaX > SWIPE_THRESHOLD) {
+                        // Swipe left to right - go to previous day (-1)
+                        navigateDate(-1);
+                    } else if (touchDeltaX < -SWIPE_THRESHOLD) {
+                        // Swipe right to left - go to next day (+1)
+                        navigateDate(1);
+                    }
+                }
+
+                isSwiping = false;
+                touchDeltaX = 0;
+            }, { passive: true });
         }
 
         async function loadExpenses() {
