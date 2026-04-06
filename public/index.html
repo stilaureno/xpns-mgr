@@ -2955,6 +2955,7 @@
 
         .mobile-expense-cards {
             margin-top: 12px;
+            overflow: visible;
         }
 
         .mobile-cards-toolbar {
@@ -3019,6 +3020,7 @@
             border-radius: 16px;
             padding: 12px;
             box-shadow: var(--md-shadow-1);
+            overflow: visible;
         }
 
         .expense-card.expense-row-selected {
@@ -3202,6 +3204,11 @@
                 align-items: center;
                 display: flex;
                 justify-content: space-between;
+                overflow: visible;
+            }
+
+            .expense-row-card {
+                overflow: visible;
             }
 
             .expense-row-left {
@@ -3293,7 +3300,7 @@
                 border: 1px solid var(--md-outline);
                 border-radius: 10px;
                 box-shadow: var(--md-shadow-2);
-                z-index: 40;
+                z-index: 9999;
                 display: none;
                 overflow: hidden;
             }
@@ -3315,6 +3322,25 @@
 
             .expense-row-menu button:active {
                 background: var(--md-surface-container-high);
+            }
+
+            @media (max-width: 768px) {
+                .expense-row-menu {
+                    position: fixed !important;
+                    right: 10px !important;
+                    top: auto !important;
+                    bottom: 80px !important;
+                    z-index: 99999 !important;
+                    transform: none !important;
+                }
+                
+                .expense-card {
+                    overflow: visible !important;
+                }
+                
+                .expense-list-row {
+                    overflow: visible !important;
+                }
             }
         }
 
