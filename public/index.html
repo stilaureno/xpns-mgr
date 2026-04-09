@@ -573,6 +573,12 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
             border-bottom: 2px solid var(--gray-200);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .daily-totals-table th:hover {
+            background: var(--gray-100);
         }
 
         .daily-totals-table td {
@@ -6578,6 +6584,19 @@
             }
         }
 
+        let dailyTotalsSortColumn = 'date';
+        let dailyTotalsSortDirection = 'desc';
+        
+        function sortDailyTotals(column) {
+            if (dailyTotalsSortColumn === column) {
+                dailyTotalsSortDirection = dailyTotalsSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                dailyTotalsSortColumn = column;
+                dailyTotalsSortDirection = 'desc';
+            }
+            loadDailyTotals();
+        }
+        
         // Render daily totals table
         function renderDailyTotals(dailyTotals, year, month) {
             const contentDiv = document.getElementById('dailyTotalsContent');
@@ -6588,7 +6607,6 @@
             const monthName = monthNames[month - 1];
             
             // Filter out any dates that don't match the selected month/year
-            // This is a safety measure in case backend returns dates from adjacent months
             const filteredTotals = dailyTotals.filter(day => {
                 if (!day.day) return false;
                 const dateParts = day.day.split('-');
@@ -6609,26 +6627,57 @@
                 return;
             }
             
+            // Sort the filtered totals
+            const sortedTotals = [...filteredTotals].sort((a, b) => {
+                let aVal, bVal;
+                if (dailyTotalsSortColumn === 'date') {
+                    aVal = a.day || '';
+                    bVal = b.day || '';
+                } else if (dailyTotalsSortColumn === 'count') {
+                    aVal = a.count || 0;
+                    bVal = b.count || 0;
+                } else if (dailyTotalsSortColumn === 'amount') {
+                    aVal = a.total_amount || 0;
+                    bVal = b.total_amount || 0;
+                }
+                
+                if (dailyTotalsSortColumn === 'date') {
+                    return dailyTotalsSortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                } else {
+                    return dailyTotalsSortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+                }
+            });
+            
             // Calculate total for the month
-            const monthTotal = filteredTotals.reduce((sum, day) => sum + (day.total_amount || 0), 0);
-            const monthCount = filteredTotals.reduce((sum, day) => sum + (day.count || 0), 0);
+            const monthTotal = sortedTotals.reduce((sum, day) => sum + (day.total_amount || 0), 0);
+            const monthCount = sortedTotals.reduce((sum, day) => sum + (day.count || 0), 0);
             
             // Format day names
             const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            
+            const amountSortIcon = dailyTotalsSortColumn === 'amount' 
+                ? (dailyTotalsSortDirection === 'asc' ? ' &#9650;' : ' &#9660;')
+                : '';
+            const countSortIcon = dailyTotalsSortColumn === 'count'
+                ? (dailyTotalsSortDirection === 'asc' ? ' &#9650;' : ' &#9660;')
+                : '';
+            const dateSortIcon = dailyTotalsSortColumn === 'date'
+                ? (dailyTotalsSortDirection === 'asc' ? ' &#9650;' : ' &#9660;')
+                : '';
             
             let tableHTML = `
                 <table class="daily-totals-table">
                     <thead>
                         <tr>
-                            <th>Date</th>
-                            <th style="text-align: center;">Count</th>
-                            <th style="text-align: right;">Total Amount</th>
+                            <th style="cursor: pointer;" onclick="sortDailyTotals('date')">Date${dateSortIcon}</th>
+                            <th style="text-align: center; cursor: pointer;" onclick="sortDailyTotals('count')">Count${countSortIcon}</th>
+                            <th style="text-align: right; cursor: pointer;" onclick="sortDailyTotals('amount')">Total Amount${amountSortIcon}</th>
                         </tr>
                     </thead>
                     <tbody>
             `;
             
-            filteredTotals.forEach(day => {
+            sortedTotals.forEach(day => {
                 // Parse the date string properly to avoid timezone issues
                 // day.day is in format "YYYY-MM-DD", parse it as local date
                 const dateParts = day.day.split('-');
