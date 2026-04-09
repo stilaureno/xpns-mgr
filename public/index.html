@@ -6516,6 +6516,9 @@
                 }
                 
                 const dailyTotals = await response.json();
+                lastLoadedDailyTotals = dailyTotals;
+                lastLoadedYear = year;
+                lastLoadedMonth = month;
                 renderDailyTotals(dailyTotals, year, month);
             } catch (error) {
                 console.error('Error loading daily totals:', error);
@@ -6571,6 +6574,9 @@
                 }
                 
                 const dailyTotals = await response.json();
+                lastLoadedDailyTotals = dailyTotals;
+                lastLoadedYear = year;
+                lastLoadedMonth = month;
                 renderDailyTotals(dailyTotals, year, month);
             } catch (error) {
                 console.error('Error loading daily totals:', error);
@@ -6586,6 +6592,9 @@
 
         let dailyTotalsSortColumn = 'date';
         let dailyTotalsSortDirection = 'desc';
+        let lastLoadedDailyTotals = null;
+        let lastLoadedYear = null;
+        let lastLoadedMonth = null;
         
         function sortDailyTotals(column) {
             if (dailyTotalsSortColumn === column) {
@@ -6594,7 +6603,11 @@
                 dailyTotalsSortColumn = column;
                 dailyTotalsSortDirection = 'desc';
             }
-            loadDailyTotals();
+            if (lastLoadedDailyTotals && lastLoadedYear && lastLoadedMonth) {
+                renderDailyTotals(lastLoadedDailyTotals, lastLoadedYear, lastLoadedMonth);
+            } else {
+                loadDailyTotals();
+            }
         }
         
         // Render daily totals table
