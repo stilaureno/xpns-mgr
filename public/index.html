@@ -3904,8 +3904,17 @@
             }
             if (filters.createdBy) query = query.eq('created_by', filters.createdBy);
             if (filters.category) query = query.eq('category_id', filters.category);
-            if (filters.startDate) query = query.gte('date', filters.startDate);
-            if (filters.endDate) query = query.lte('date', filters.endDate);
+            
+            // Date filtering - use simple date comparison, not datetime
+            if (filters.startDate) {
+                // Extract just the date part (YYYY-MM-DD) from the ISO string
+                const startDateOnly = filters.startDate.split('T')[0];
+                query = query.gte('date', startDateOnly);
+            }
+            if (filters.endDate) {
+                const endDateOnly = filters.endDate.split('T')[0];
+                query = query.lte('date', endDateOnly);
+            }
             
             const { data, error } = await query.order('date', { ascending: false }).order('created_at', { ascending: false });
             if (error) throw error;
