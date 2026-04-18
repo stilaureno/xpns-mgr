@@ -3916,20 +3916,21 @@
             }
             console.log('Total expenses from Supabase (no date filter):', data?.length || 0);
             
-            // Now filter by date on client side using proper Date comparison
+            // Now filter by date on client side using string comparison
             let filteredData = data || [];
             
             if (filters.startDate || filters.endDate) {
-                const startDate = filters.startDate ? new Date(filters.startDate) : null;
-                const endDate = filters.endDate ? new Date(filters.endDate) : null;
+                // Convert ISO dates to YYYY-MM-DD strings for comparison
+                const startStr = filters.startDate ? filters.startDate.split('T')[0] : null;
+                const endStr = filters.endDate ? filters.endDate.split('T')[0] : null;
                 
-                console.log('Client-side date filter:', startDate, 'to', endDate);
+                console.log('Client-side date filter:', startStr, 'to', endStr);
                 
                 filteredData = filteredData.filter(exp => {
                     if (!exp.date) return false;
-                    const expDate = new Date(exp.date);
-                    if (startDate && expDate < startDate) return false;
-                    if (endDate && expDate > endDate) return false;
+                    const expDateStr = exp.date.split('T')[0];
+                    if (startStr && expDateStr < startStr) return false;
+                    if (endStr && expDateStr > endStr) return false;
                     return true;
                 });
                 console.log('After client-side filter:', filteredData.length);
@@ -4097,6 +4098,17 @@
         function isTodayGMT8(dateString) {
             const todayGMT8 = getTodayGMT8();
             return dateString === todayGMT8;
+        }
+
+        // Format date string for display (e.g., '2026-04-18' → 'Apr 18')
+        function formatDateDisplay(dateStr) {
+            const date = dateStr.split('T')[0];  // Handle both 'YYYY-MM-DD' and 'YYYY-MM-DDTHH:MM:SS'
+            if (date === getTodayGMT8()) return 'Today';
+            const [y, m, d] = date.split('-').map(Number);
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                             'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const displayYear = y !== new Date().getFullYear() ? ', ' + y : '';
+            return `${monthNames[m-1]} ${d}${displayYear}`;
         }
 
         // Format number with thousand separators
@@ -4316,54 +4328,48 @@
                 let periodTotalCount = 0;
                 let periodTotalAmount = 0;
                 
-                const now = new Date();
-                const gmt8Time = new Date(now.getTime() + (8 * 60 * 60 * 1000));
-                let startDate, endDate;
+                const todayStr = getTodayGMT8();
+                let startStr, endStr;
                 
                 if (filterDate) {
-                    const [year, month, day] = filterDate.split('-').map(Number);
-                    startDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
-                    endDate = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
-                    
-                    const selectedDate = new Date(Date.UTC(year, month - 1, day));
-                    periodLabel = selectedDate.toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric', 
-                        year: 'numeric' 
-                    });
+                    startStr = filterDate;
+                    endStr = filterDate;
+                    periodLabel = formatDateDisplay(filterDate);
                 } else {
                     switch(period) {
                         case 'today':
-                            const todayGMT8 = getTodayGMT8();
-                            const [y, m, d] = todayGMT8.split('-').map(Number);
-                            startDate = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
-                            endDate = gmt8Time;
+                            startStr = todayStr;
+                            endStr = todayStr;
                             periodLabel = 'Today';
                             break;
                         case 'week':
-                            startDate = new Date(gmt8Time);
-                            startDate.setDate(startDate.getDate() - 7);
-                            endDate = gmt8Time;
+                            // Custom logic - last 7 days from today
+                            const [y, m, d] = todayStr.split('-').map(Number);
+                            const today = new Date(Date.UTC(y, m - 1, d));
+                            const weekAgo = new Date(today);
+                            weekAgo.setDate(weekAgo.getDate() - 7);
+                            startStr = weekAgo.toISOString().split('T')[0];
+                            endStr = todayStr;
                             periodLabel = 'This Week';
                             break;
                         case 'month':
-                            startDate = new Date(Date.UTC(gmt8Time.getUTCFullYear(), gmt8Time.getUTCMonth(), 1, 0, 0, 0, 0));
-                            endDate = gmt8Time;
+                            startStr = `${todayStr.slice(0, 7)}-01`;
+                            endStr = todayStr;
                             periodLabel = 'This Month';
                             break;
                         case 'year':
-                            startDate = new Date(Date.UTC(gmt8Time.getUTCFullYear(), 0, 1, 0, 0, 0, 0));
-                            endDate = gmt8Time;
+                            startStr = `${todayStr.slice(0, 4)}-01-01`;
+                            endStr = todayStr;
                             periodLabel = 'This Year';
                             break;
                     }
                 }
                 
-                // Filter by date range for period stats
-                if (startDate && endDate && allExpenses) {
+                // Filter by date for period stats using string comparison
+                if (startStr && endStr && allExpenses) {
                     allExpenses.forEach(exp => {
-                        const expDate = new Date(exp.date);
-                        if (expDate >= startDate && expDate <= endDate) {
+                        const expDateStr = exp.date.split('T')[0];
+                        if (expDateStr >= startStr && expDateStr <= endStr) {
                             periodTotalCount++;
                             periodTotalAmount += parseFloat(exp.amount) || 0;
                         }
@@ -4386,28 +4392,32 @@
                 const formattedPeriodAmount = formatNumberWithCommas(periodTotalAmount);
                 const formattedTotalAmount = formatNumberWithCommas(totalAmount);
                 
+                const formattedPeriodAmount = formatNumberWithCommas(periodTotalAmount);
+                const formattedTotalAmount = formatNumberWithCommas(totalAmount);
+                
                 // Calculate totals based on current view mode
                 let displayLabel = 'All Time Total';
                 let displayAmount = formattedTotalAmount;
                 
-                // Calculate month and year totals from allExpenses
+                // Calculate month and year totals from allExpenses using string comparison
+                const currentMonthStart = `${todayStr.slice(0, 7)}-01`;
+                const currentYearStart = `${todayStr.slice(0, 4)}-01-01`;
+                
                 if (totalViewMode === 'thisMonth' && allExpenses) {
-                    const startOfMonth = new Date(Date.UTC(gmt8Time.getUTCFullYear(), gmt8Time.getUTCMonth(), 1, 0, 0, 0, 0));
                     let monthTotalAmount = 0;
                     allExpenses.forEach(exp => {
-                        const expDate = new Date(exp.date);
-                        if (expDate >= startOfMonth && expDate <= gmt8Time) {
+                        const expDateStr = exp.date.split('T')[0];
+                        if (expDateStr >= currentMonthStart && expDateStr <= todayStr) {
                             monthTotalAmount += parseFloat(exp.amount) || 0;
                         }
                     });
                     displayLabel = 'This Month Total';
                     displayAmount = formatNumberWithCommas(monthTotalAmount);
                 } else if (totalViewMode === 'thisYear' && allExpenses) {
-                    const startOfYear = new Date(Date.UTC(gmt8Time.getUTCFullYear(), 0, 1, 0, 0, 0, 0));
                     let yearTotalAmount = 0;
                     allExpenses.forEach(exp => {
-                        const expDate = new Date(exp.date);
-                        if (expDate >= startOfYear && expDate <= gmt8Time) {
+                        const expDateStr = exp.date.split('T')[0];
+                        if (expDateStr >= currentYearStart && expDateStr <= todayStr) {
                             yearTotalAmount += parseFloat(exp.amount) || 0;
                         }
                     });
@@ -4767,41 +4777,38 @@
                 
                 // Build filters object for Supabase
                 const filters = {};
+                const todayStr = getTodayGMT8();
                 
                 // Priority: If a specific date is selected, use that; otherwise use period
                 if (filterDate) {
-                    const [year, month, day] = filterDate.split('-').map(Number);
-                    const startOfDay = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
-                    const endOfDay = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
-                    filters.startDate = startOfDay.toISOString();
-                    filters.endDate = endOfDay.toISOString();
+                    // Specific date - use it for both start and end
+                    filters.startDate = filterDate;
+                    filters.endDate = filterDate;
                 } else if (period) {
-                    const nowGMT8 = getNowGMT8();
-                    let startDate;
+                    let startStr;
                     
                     switch(period) {
                         case 'today':
-                            const todayGMT8 = getTodayGMT8();
-                            const [year, month, day] = todayGMT8.split('-').map(Number);
-                            startDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+                            startStr = todayStr;
                             break;
                         case 'week':
-                            startDate = new Date(nowGMT8);
-                            startDate.setUTCDate(nowGMT8.getUTCDate() - 7);
+                            const [y, m, d] = todayStr.split('-').map(Number);
+                            const today = new Date(Date.UTC(y, m - 1, d));
+                            const weekAgo = new Date(today);
+                            weekAgo.setDate(weekAgo.getDate() - 7);
+                            startStr = weekAgo.toISOString().split('T')[0];
                             break;
                         case 'month':
-                            startDate = new Date(Date.UTC(nowGMT8.getUTCFullYear(), nowGMT8.getUTCMonth(), 1, 0, 0, 0, 0));
+                            startStr = `${todayStr.slice(0, 7)}-01`;
                             break;
                         case 'year':
-                            startDate = new Date(Date.UTC(nowGMT8.getUTCFullYear(), 0, 1, 0, 0, 0, 0));
+                            startStr = `${todayStr.slice(0, 4)}-01-01`;
                             break;
                     }
                     
-                    if (startDate) {
-                        filters.startDate = startDate.toISOString();
-                        filters.endDate = nowGMT8.toISOString();
-                        // Force fresh fetch
-                        filters._nocache = Date.now();
+                    if (startStr) {
+                        filters.startDate = startStr;
+                        filters.endDate = todayStr;
                     }
                 }
                 
@@ -4917,18 +4924,7 @@
             return expenses.map(expense => {
                 const category = categories.find(c => c.id === expense.category);
                 const actions = getActions(expense);
-                // Parse date string directly - it's stored as YYYY-MM-DD in DB
-                const dateStr = expense.date.split('T')[0];
-                const isToday = isTodayGMT8(dateStr);
-                const dateDisplay = isToday ? 'Today' : (() => {
-                    const [y, m, d] = dateStr.split('-').map(Number);
-                    const date = new Date(Date.UTC(y, m - 1, d));
-                    return date.toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        y: date.getUTCFullYear() !== new Date().getUTCFullYear() ? 'numeric' : undefined
-                    });
-                })();
+                const dateDisplay = formatDateDisplay(expense.date);
                 const descriptionHtml = expense.description ? `<span class="description">${expense.description}</span>` : '';
                 const isSelected = selectedExpenses.has(expense.id);
                 return `
@@ -4962,17 +4958,7 @@
 
         function renderExpensesCards(expenses) {
             return expenses.map(expense => {
-                const dateStr = expense.date.split('T')[0];
-                const isToday = isTodayGMT8(dateStr);
-                const dateDisplay = isToday ? 'Today' : (() => {
-                    const [y, m, d] = dateStr.split('-').map(Number);
-                    const date = new Date(Date.UTC(y, m - 1, d));
-                    return date.toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: date.getUTCFullYear() !== new Date().getUTCFullYear() ? 'numeric' : undefined
-                    });
-                })();
+                const dateDisplay = formatDateDisplay(expense.date);
                 const descriptionHtml = expense.description ? `<div class="expense-card-description">${expense.description}</div>` : '';
                 const isSelected = selectedExpenses.has(expense.id);
                 const menuId = `expenseMenu-${expense.id}`;
@@ -6553,15 +6539,16 @@
             try {
                 contentDiv.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--gray-600);">Loading...</div>';
                 
-                // Calculate daily totals client-side from Supabase
+                // Use string dates for filtering
+                const monthStr = String(month).padStart(2, '0');
+                const startStr = `${year}-${monthStr}-01`;
                 const lastDay = new Date(year, month, 0).getDate();
-                const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
-                const endDate = new Date(Date.UTC(year, month - 1, lastDay, 23, 59, 59, 999));
+                const endStr = `${year}-${monthStr}-${String(lastDay).padStart(2, '0')}`;
                 
                 const expenses = await sbGetExpenses({ 
                     state: 'active',
-                    startDate: startDate.toISOString(),
-                    endDate: endDate.toISOString()
+                    startDate: startStr,
+                    endDate: endStr
                 });
                 
                 // Calculate daily totals
@@ -6629,15 +6616,16 @@
             try {
                 contentDiv.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--gray-600);">Loading...</div>';
                 
-                // Calculate daily totals client-side from Supabase
+                // Use string dates for filtering
+                const monthStr = String(month).padStart(2, '0');
+                const startStr = `${year}-${monthStr}-01`;
                 const lastDay = new Date(year, month, 0).getDate();
-                const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
-                const endDate = new Date(Date.UTC(year, month - 1, lastDay, 23, 59, 59, 999));
+                const endStr = `${year}-${monthStr}-${String(lastDay).padStart(2, '0')}`;
                 
                 const expenses = await sbGetExpenses({ 
                     state: 'active',
-                    startDate: startDate.toISOString(),
-                    endDate: endDate.toISOString()
+                    startDate: startStr,
+                    endDate: endStr
                 });
                 
                 // Calculate daily totals
