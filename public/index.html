@@ -4303,7 +4303,7 @@
                 // Get all non-archived expenses for stats
                 const { data: allExpenses, error } = await supabaseClient
                     .from('expenses')
-                    .select('state, amount')
+                    .select('state, amount, date')
                     .neq('state', 'archived');
                 
                 if (error) throw error;
