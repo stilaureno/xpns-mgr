@@ -3905,29 +3905,43 @@
             if (filters.createdBy) query = query.eq('created_by', filters.createdBy);
             if (filters.category) query = query.eq('category_id', filters.category);
             
-            // Date filtering - extract date-only and use explicit date comparison
-            if (filters.startDate) {
-                const startDateOnly = filters.startDate.split('T')[0];
-                console.log('Using startDate filter:', startDateOnly);
-                query = query.gte('date', startDateOnly);
-            }
-            if (filters.endDate) {
-                const endDateOnly = filters.endDate.split('T')[0];
-                // Add one day to include the full end date
-                const nextDay = new Date(endDateOnly);
-                nextDay.setDate(nextDay.getDate() + 1);
-                const endDatePlusOne = nextDay.toISOString().split('T')[0];
-                console.log('Using endDate filter:', endDatePlusOne, '(original:', endDateOnly, ')');
-                query = query.lt('date', endDatePlusOne);
-            }
+            // Get ALL non-archived expenses - let client-side handle date filtering
+            // This ensures we don't miss any expenses due to timezone issues
+            // (We removed date filtering to debug the issue)
             
             const { data, error } = await query.order('date', { ascending: false }).order('created_at', { ascending: false });
             if (error) {
                 console.error('Supabase query error:', error);
                 throw error;
             }
-            console.log('Supabase query result:', data?.length || 0, 'expenses');
-            return data || [];
+            console.log('Total expenses from Supabase (no date filter):', data?.length || 0);
+            
+            // Now filter by date on client side
+            let filteredData = data || [];
+            
+            if (filters.startDate || filters.endDate) {
+                const startDateOnly = filters.startDate ? filters.startDate.split('T')[0] : null;
+                const endDateOnly = filters.endDate ? filters.endDate.split('T')[0] : null;
+                
+                console.log('Client-side date filter:', startDateOnly, 'to', endDateOnly);
+                
+                filteredData = filteredData.filter(exp => {
+                    if (!exp.date) return false;
+                    const expDate = exp.date.split('T')[0];
+                    if (startDateOnly && expDate < startDateOnly) return false;
+                    if (endDateOnly) {
+                        // Include the full end date
+                        const nextEnd = new Date(endDateOnly);
+                        nextEnd.setDate(nextEnd.getDate() + 1);
+                        const nextEndStr = nextEnd.toISOString().split('T')[0];
+                        if (expDate >= nextEndStr) return false;
+                    }
+                    return true;
+                });
+                console.log('After client-side filter:', filteredData.length);
+            }
+            
+            return filteredData;
         }
 
         async function sbCreateExpense(expense) {
