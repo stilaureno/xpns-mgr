@@ -4398,12 +4398,10 @@
                 
                 // Calculate month and year totals from allExpenses
                 if (totalViewMode === 'thisMonth' && allExpenses) {
-                    const startOfMonth = new Date(Date.UTC(gmt8Time.getUTCFullYear(), gmt8Time.getUTCMonth(), 1, 0, 0, 0, 0) - (8 * 60 * 60 * 1000));
+                    const startOfMonth = new Date(Date.UTC(gmt8Time.getUTCFullYear(), gmt8Time.getUTCMonth(), 1, 0, 0, 0, 0));
                     let monthTotalAmount = 0;
                     allExpenses.forEach(exp => {
-                        // Parse date as GMT+8 to match server timezone
-                        const [y, m, d] = exp.date.split('-').map(Number);
-                        const expDate = new Date(Date.UTC(y, m - 1, d, 12, 0, 0, 0) - (8 * 60 * 60 * 1000));
+                        const expDate = new Date(exp.date);
                         if (expDate >= startOfMonth && expDate <= gmt8Time) {
                             monthTotalAmount += parseFloat(exp.amount) || 0;
                         }
@@ -4411,12 +4409,10 @@
                     displayLabel = 'This Month Total';
                     displayAmount = formatNumberWithCommas(monthTotalAmount);
                 } else if (totalViewMode === 'thisYear' && allExpenses) {
-                    const startOfYear = new Date(Date.UTC(gmt8Time.getUTCFullYear(), 0, 1, 0, 0, 0, 0) - (8 * 60 * 60 * 1000));
+                    const startOfYear = new Date(Date.UTC(gmt8Time.getUTCFullYear(), 0, 1, 0, 0, 0, 0));
                     let yearTotalAmount = 0;
                     allExpenses.forEach(exp => {
-                        // Parse date as GMT+8 to match server timezone
-                        const [y, m, d] = exp.date.split('-').map(Number);
-                        const expDate = new Date(Date.UTC(y, m - 1, d, 12, 0, 0, 0) - (8 * 60 * 60 * 1000));
+                        const expDate = new Date(exp.date);
                         if (expDate >= startOfYear && expDate <= gmt8Time) {
                             yearTotalAmount += parseFloat(exp.amount) || 0;
                         }
