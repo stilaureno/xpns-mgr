@@ -3927,14 +3927,18 @@
                 
                 filteredData = filteredData.filter(exp => {
                     if (!exp.date) return false;
-                    const expDate = exp.date.split('T')[0];
-                    if (startDateOnly && expDate < startDateOnly) return false;
+                    // Parse date as GMT+8 to match server timezone
+                    const [ey, em, ed] = exp.date.split('-').map(Number);
+                    const expDate = new Date(Date.UTC(ey, em - 1, ed, 12, 0, 0, 0) - (8 * 60 * 60 * 1000));
+                    if (startDateOnly) {
+                        const startParts = startDateOnly.split('-').map(Number);
+                        const startCheck = new Date(Date.UTC(startParts[0], startParts[1] - 1, startParts[2], 12, 0, 0, 0) - (8 * 60 * 60 * 1000));
+                        if (expDate < startCheck) return false;
+                    }
                     if (endDateOnly) {
-                        // Include the full end date
-                        const nextEnd = new Date(endDateOnly);
-                        nextEnd.setDate(nextEnd.getDate() + 1);
-                        const nextEndStr = nextEnd.toISOString().split('T')[0];
-                        if (expDate >= nextEndStr) return false;
+                        const endParts = endDateOnly.split('-').map(Number);
+                        const endCheck = new Date(Date.UTC(endParts[0], endParts[1] - 1, endParts[2], 12, 0, 0, 0) - (8 * 60 * 60 * 1000));
+                        if (expDate > endCheck) return false;
                     }
                     return true;
                 });
@@ -4368,7 +4372,9 @@
                 // Filter by date range for period stats
                 if (startDate && endDate && allExpenses) {
                     allExpenses.forEach(exp => {
-                        const expDate = new Date(exp.date);
+                        // Parse date as GMT+8 to match server timezone
+                        const [ey, em, ed] = exp.date.split('-').map(Number);
+                        const expDate = new Date(Date.UTC(ey, em - 1, ed, 12, 0, 0, 0) - (8 * 60 * 60 * 1000));
                         if (expDate >= startDate && expDate <= endDate) {
                             periodTotalCount++;
                             periodTotalAmount += parseFloat(exp.amount) || 0;
