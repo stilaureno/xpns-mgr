@@ -3929,13 +3929,7 @@
                     if (!exp.date) return false;
                     const expDate = exp.date.split('T')[0];
                     if (startDateOnly && expDate < startDateOnly) return false;
-                    if (endDateOnly) {
-                        // Include the full end date
-                        const nextEnd = new Date(endDateOnly);
-                        nextEnd.setDate(nextEnd.getDate() + 1);
-                        const nextEndStr = nextEnd.toISOString().split('T')[0];
-                        if (expDate >= nextEndStr) return false;
-                    }
+                    if (endDateOnly && expDate > endDateOnly) return false;
                     return true;
                 });
                 console.log('After client-side filter:', filteredData.length);
@@ -4789,17 +4783,17 @@
                         case 'today':
                             const todayGMT8 = getTodayGMT8();
                             const [year, month, day] = todayGMT8.split('-').map(Number);
-                            startDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0) - (8 * 60 * 60 * 1000));
+                            startDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
                             break;
                         case 'week':
                             startDate = new Date(nowGMT8);
                             startDate.setUTCDate(nowGMT8.getUTCDate() - 7);
                             break;
                         case 'month':
-                            startDate = new Date(Date.UTC(nowGMT8.getUTCFullYear(), nowGMT8.getUTCMonth(), 1, 0, 0, 0, 0) - (8 * 60 * 60 * 1000));
+                            startDate = new Date(Date.UTC(nowGMT8.getUTCFullYear(), nowGMT8.getUTCMonth(), 1, 0, 0, 0, 0));
                             break;
                         case 'year':
-                            startDate = new Date(Date.UTC(nowGMT8.getUTCFullYear(), 0, 1, 0, 0, 0, 0) - (8 * 60 * 60 * 1000));
+                            startDate = new Date(Date.UTC(nowGMT8.getUTCFullYear(), 0, 1, 0, 0, 0, 0));
                             break;
                     }
                     
