@@ -85,7 +85,11 @@ export class ExpenseService {
       user:users(name)
     `);
 
-    if (filters?.state) {
+    // Handle "active" as special case - means non-archived
+    if (filters?.state === 'active' || filters?.state === undefined) {
+      // Exclude archived expenses (show all non-archived)
+      query = query.neq('state', 'archived');
+    } else if (filters?.state) {
       query = query.eq('state', filters.state);
     }
 
@@ -221,11 +225,12 @@ export class ExpenseService {
     const { error } = await getSupabaseClient()
       .from('expense_history')
       .insert([{
+        id: crypto.randomUUID(),
         expense_id: expenseId,
         from_state: fromState,
         to_state: toState,
         event_type: eventType,
-        event_data: eventData,
+        event_data: JSON.stringify(eventData),
         performed_by: performedBy
       }]);
 
@@ -236,6 +241,12 @@ export class ExpenseService {
 
   // Delete expense
   static async delete(id: string): Promise<boolean> {
+    // First delete related history records to satisfy foreign key constraint
+    await getSupabaseClient()
+      .from('expense_history')
+      .delete()
+      .eq('expense_id', id);
+
     const { error } = await getSupabaseClient()
       .from('expenses')
       .delete()

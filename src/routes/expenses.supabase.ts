@@ -145,6 +145,14 @@ expenses.post("/", async (c) => {
   try {
     const body = await c.req.json();
 
+    if (!body.createdBy) {
+      return c.json({ error: "Missing required field: createdBy" }, 400);
+    }
+
+    if (!body.category) {
+      return c.json({ error: "Missing required field: category" }, 400);
+    }
+
     const expense = await ExpenseService.create({
       title: body.title,
       description: body.description || "",
@@ -159,12 +167,13 @@ expenses.post("/", async (c) => {
     });
 
     if (!expense) {
-      return c.json({ error: "Failed to create expense" }, 400);
+      return c.json({ error: "Failed to create expense" }, 500);
     }
 
     return c.json(expense, 201);
   } catch (error) {
-    return c.json({ error: "Failed to create expense", details: String(error) }, 400);
+    console.error("Error creating expense:", error);
+    return c.json({ error: "Failed to create expense", details: String(error) }, 500);
   }
 });
 

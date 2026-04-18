@@ -4,8 +4,8 @@
   "description": "A modern expense manager built with Bun and BHVR pattern",
   "type": "module",
   "scripts": {
-    "dev": "bun run --watch src/index.mariadb.ts",
-    "start": "bun run src/index.mariadb.ts",
+    "dev": "bun run --watch src/index.supabase.ts",
+    "start": "bun run src/index.supabase.ts",
     "dev:sqlite": "bun run --watch src/index.ts",
     "start:sqlite": "bun run src/index.ts",
     "dev:supabase": "bun run --watch src/index.supabase.ts",
