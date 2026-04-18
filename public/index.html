@@ -3917,7 +3917,11 @@
             }
             
             const { data, error } = await query.order('date', { ascending: false }).order('created_at', { ascending: false });
-            if (error) throw error;
+            if (error) {
+                console.error('Supabase query error:', error);
+                throw error;
+            }
+            console.log('Supabase query result:', data?.length || 0, 'expenses');
             return data || [];
         }
 
@@ -4782,7 +4786,9 @@
                 if (state && state !== 'active') filters.state = state;
                 if (category) filters.category = category;
                 
-                console.log('Fetching expenses from Supabase with filters:', filters);
+                console.log('Filter values - filterDate:', filterDate, 'period:', period, 'state:', state, 'category:', category);
+                console.log('Final filters being sent to sbGetExpenses:', filters);
+                
                 const expenses = await sbGetExpenses(filters);
                 console.log('Expenses loaded:', expenses.length);
                 
