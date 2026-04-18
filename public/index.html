@@ -4322,8 +4322,8 @@
                 
                 if (filterDate) {
                     const [year, month, day] = filterDate.split('-').map(Number);
-                    startDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0) - (8 * 60 * 60 * 1000));
-                    endDate = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999) - (8 * 60 * 60 * 1000));
+                    startDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+                    endDate = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
                     
                     const selectedDate = new Date(Date.UTC(year, month - 1, day));
                     periodLabel = selectedDate.toLocaleDateString('en-US', { 
@@ -4336,7 +4336,7 @@
                         case 'today':
                             const todayGMT8 = getTodayGMT8();
                             const [y, m, d] = todayGMT8.split('-').map(Number);
-                            startDate = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0) - (8 * 60 * 60 * 1000));
+                            startDate = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
                             endDate = gmt8Time;
                             periodLabel = 'Today';
                             break;
@@ -4347,12 +4347,12 @@
                             periodLabel = 'This Week';
                             break;
                         case 'month':
-                            startDate = new Date(Date.UTC(gmt8Time.getUTCFullYear(), gmt8Time.getUTCMonth(), 1, 0, 0, 0, 0) - (8 * 60 * 60 * 1000));
+                            startDate = new Date(Date.UTC(gmt8Time.getUTCFullYear(), gmt8Time.getUTCMonth(), 1, 0, 0, 0, 0));
                             endDate = gmt8Time;
                             periodLabel = 'This Month';
                             break;
                         case 'year':
-                            startDate = new Date(Date.UTC(gmt8Time.getUTCFullYear(), 0, 1, 0, 0, 0, 0) - (8 * 60 * 60 * 1000));
+                            startDate = new Date(Date.UTC(gmt8Time.getUTCFullYear(), 0, 1, 0, 0, 0, 0));
                             endDate = gmt8Time;
                             periodLabel = 'This Year';
                             break;
