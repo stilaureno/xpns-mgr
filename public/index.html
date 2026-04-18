@@ -3868,13 +3868,13 @@
             </div>
         </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabaseClient/supabaseClient-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         // Supabase client configuration
-        const SUPABASE_URL = 'https://pffxpzdaifiuiwyisszq.supabaseClient.co';
+        const SUPABASE_URL = 'https://pffxpzdaifiuiwyisszq.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBmZnhwemRhaWZpdWl3eWlzc3pxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1MjI0MzUsImV4cCI6MjA5MjA5ODQzNX0.6CSshzN7RYT1j-7f9qt8s4WhXqIX6J1LurxqYuY0xuI';
         
-        const supabaseClientClient = window.supabaseClient.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // Supabase helper functions
         async function sbGetCategories() {
