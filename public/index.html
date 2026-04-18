@@ -4369,8 +4369,16 @@
                 console.log('loadStatistics period:', period, 'startStr:', startStr, 'endStr:', endStr, 'allExpenses:', allExpenses?.length);
                 if (startStr && endStr && allExpenses) {
                     allExpenses.forEach(exp => {
-                        const expDateStr = exp.date.split('T')[0].split(' ')[0];
-                        console.log('expDateStr:', expDateStr, 'exp.amount:', exp.amount, 'match:', expDateStr >= startStr && expDateStr <= endStr);
+                        // Handle both 'T' and ' ' separators from Supabase
+                        let expDateStr = exp.date;
+                        if (expDateStr.includes('T')) {
+                            expDateStr = expDateStr.split('T')[0];
+                        } else if (expDateStr.includes(' ')) {
+                            expDateStr = expDateStr.split(' ')[0];
+                        }
+                        if (expDateStr === startStr) {
+                            console.log('MATCH:', exp.amount, exp.date, '->', expDateStr);
+                        }
                         if (expDateStr >= startStr && expDateStr <= endStr) {
                             periodTotalCount++;
                             periodTotalAmount += parseFloat(exp.amount) || 0;
