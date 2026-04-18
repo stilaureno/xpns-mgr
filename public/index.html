@@ -4051,6 +4051,13 @@
         let allExpenses = []; // Store all expenses for client-side filtering
         let selectedExpenses = new Set(); // Track selected expense IDs
         // Load total view mode from localStorage, default to 'allTime' if not set
+        // Clear old cache if version changed
+        const CACHE_VERSION = 'v2';
+        const cachedVersion = localStorage.getItem('totalViewModeVersion');
+        if (cachedVersion !== CACHE_VERSION) {
+            localStorage.removeItem('totalViewMode');
+            localStorage.setItem('totalViewModeVersion', CACHE_VERSION);
+        }
         let totalViewMode = localStorage.getItem('totalViewMode') || 'allTime';
 
         function getUniqueCategoriesByName(categoryList = categories) {
@@ -4394,7 +4401,9 @@
                     const startOfMonth = new Date(Date.UTC(gmt8Time.getUTCFullYear(), gmt8Time.getUTCMonth(), 1, 0, 0, 0, 0) - (8 * 60 * 60 * 1000));
                     let monthTotalAmount = 0;
                     allExpenses.forEach(exp => {
-                        const expDate = new Date(exp.date);
+                        // Parse date as GMT+8 to match server timezone
+                        const [y, m, d] = exp.date.split('-').map(Number);
+                        const expDate = new Date(Date.UTC(y, m - 1, d, 12, 0, 0, 0) - (8 * 60 * 60 * 1000));
                         if (expDate >= startOfMonth && expDate <= gmt8Time) {
                             monthTotalAmount += parseFloat(exp.amount) || 0;
                         }
@@ -4405,7 +4414,9 @@
                     const startOfYear = new Date(Date.UTC(gmt8Time.getUTCFullYear(), 0, 1, 0, 0, 0, 0) - (8 * 60 * 60 * 1000));
                     let yearTotalAmount = 0;
                     allExpenses.forEach(exp => {
-                        const expDate = new Date(exp.date);
+                        // Parse date as GMT+8 to match server timezone
+                        const [y, m, d] = exp.date.split('-').map(Number);
+                        const expDate = new Date(Date.UTC(y, m - 1, d, 12, 0, 0, 0) - (8 * 60 * 60 * 1000));
                         if (expDate >= startOfYear && expDate <= gmt8Time) {
                             yearTotalAmount += parseFloat(exp.amount) || 0;
                         }
