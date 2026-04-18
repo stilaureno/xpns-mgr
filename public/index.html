@@ -6061,31 +6061,7 @@
                     console.error(`Error deleting expense ${expenseId}:`, error);
                     errorCount++;
                 }
-            }
-            
-            clearSelection();
-            await loadExpenses();
-            await loadStatistics();
-            
-            if (errorCount > 0) {
-                alert(`Deleted ${successCount} expense(s). ${errorCount} failed.`);
-            } else {
-                alert(`Successfully deleted ${successCount} expense(s).`);
-            }
-        }
-
-        // Initialize
-
-            clearSelection();
-            await loadExpenses();
-            await loadStatistics();
-            
-            if (errorCount > 0) {
-                alert(`Deleted ${successCount} expense(s). ${errorCount} failed.`);
-            } else {
-                alert(`Successfully deleted ${successCount} expense(s).`);
-            }
-        }
+}
 
         // Populate bulk category dropdown when categories load
         const originalLoadCategories = loadCategories;
