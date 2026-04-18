@@ -5149,18 +5149,13 @@
                 const endOfDay = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999) - (8 * 60 * 60 * 1000));
                 
                 const url = `${API_BASE}/expenses?startDate=${startOfDay.toISOString()}&endDate=${endOfDay.toISOString()}`;
-                const response = await fetch(url);
+                const allDayExpenses = await sbGetExpenses({
+                    startDate: startOfDay.toISOString(),
+                    endDate: endOfDay.toISOString(),
+                    state: 'active'
+                });
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const allDayExpenses = await response.json();
-                
-                // Filter out archived expenses
-                const dayExpenses = allDayExpenses.filter(expense => expense.state !== 'archived');
-                
-                renderDateExpenses(dayExpenses, listDiv);
+                renderDateExpenses(allDayExpenses, listDiv);
             } catch (error) {
                 console.error('Error loading expenses for date:', error);
                 listDiv.innerHTML = `
@@ -5463,10 +5458,6 @@
                 document.getElementById('expenseForm').reset();
                 await loadExpenses();
                 await loadStatistics();
-                } else {
-                    const error = await response.json();
-                    alert('Failed to create expense: ' + (error.error || 'Unknown error'));
-                }
             } catch (error) {
                 console.error('Error creating expense:', error);
                 alert('Failed to create expense. Please try again.');
@@ -5516,19 +5507,6 @@
                 await sbRestoreExpense(id);
                 await loadExpenses();
                 await loadStatistics();
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: user.id })
-                });
-                
-                if (response.ok) {
-                    await loadExpenses();
-                    await loadStatistics();
-                } else {
-                    const error = await response.json();
-                    console.error('Restore error:', error);
-                    alert('Failed to restore expense: ' + (error.error || error.details || 'Unknown error'));
-                }
             } catch (error) {
                 console.error('Error restoring expense:', error);
                 alert('Failed to restore expense: ' + error.message);
@@ -5653,53 +5631,55 @@
 
         async function executeSearch(query, startDate, endDate) {
             try {
-                // Build search URL
-                let url = `${API_BASE}/expenses/search?`;
-                const params = [];
+                // Build filters for Supabase
+                const filters = { state: 'active' };
                 
                 if (query.trim()) {
-                    params.push(`q=${encodeURIComponent(query.trim())}`);
+                    filters.search = query.trim();
                 }
                 if (startDate) {
                     // Convert to start of day in GMT+8
                     const [year, month, day] = startDate.split('-').map(Number);
                     const start = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0) - (8 * 60 * 60 * 1000));
-                    params.push(`startDate=${start.toISOString()}`);
+                    filters.startDate = start.toISOString();
                 }
                 if (endDate) {
                     // Convert to end of day in GMT+8
                     const [year, month, day] = endDate.split('-').map(Number);
                     const end = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999) - (8 * 60 * 60 * 1000));
-                    params.push(`endDate=${end.toISOString()}`);
+                    filters.endDate = end.toISOString();
                 }
                 
                 // If no search criteria, show hint
-                if (params.length === 0) {
+                if (!query.trim() && !startDate && !endDate) {
                     updateSearchStatus('hint', 'Type to search across all expenses');
                     document.getElementById('searchResultsHeader').style.display = 'none';
                     document.getElementById('searchResultsList').innerHTML = '';
                     return;
                 }
                 
-                url += params.join('&');
+                // Fetch from Supabase
+                let expenses = await sbGetExpenses(filters);
                 
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(`Search failed: ${response.status}`);
+                // Client-side search filter if query provided
+                if (query.trim()) {
+                    const searchLower = query.trim().toLowerCase();
+                    expenses = expenses.filter(exp => {
+                        return exp.title?.toLowerCase().includes(searchLower) ||
+                               exp.description?.toLowerCase().includes(searchLower) ||
+                               exp.amount?.toString().includes(searchLower);
+                    });
                 }
                 
-                const data = await response.json();
-                searchResults = data.expenses;
-                searchHighlights = data.highlights || {};
+                searchResults = expenses;
+                searchHighlights = {};
                 
                 // Update status
-                const totalText = data.total > data.expenses.length 
-                    ? `Showing ${data.expenses.length} of ${data.total} results`
-                    : `${data.total} result${data.total !== 1 ? 's' : ''} found`;
+                const totalText = `${expenses.length} result${expenses.length !== 1 ? 's' : ''} found`;
                 updateSearchStatus('', totalText);
                 
                 // Render results
-                renderSearchResults(data.expenses, query.trim(), data.highlights);
+                renderSearchResults(expenses, query.trim(), {});
                 
                 // Also sync to desktop search and refresh table
                 const desktopSearch = document.getElementById('searchInput');
