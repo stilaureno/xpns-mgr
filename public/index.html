@@ -4046,7 +4046,7 @@
         let selectedExpenses = new Set(); // Track selected expense IDs
         // Load total view mode from localStorage, default to 'allTime' if not set
         // Clear old cache if version changed
-        const CACHE_VERSION = 'v2';
+        const CACHE_VERSION = 'v3';
         const cachedVersion = localStorage.getItem('totalViewModeVersion');
         if (cachedVersion !== CACHE_VERSION) {
             localStorage.removeItem('totalViewMode');
@@ -4771,8 +4771,8 @@
                 // Priority: If a specific date is selected, use that; otherwise use period
                 if (filterDate) {
                     const [year, month, day] = filterDate.split('-').map(Number);
-                    const startOfDay = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0) - (8 * 60 * 60 * 1000));
-                    const endOfDay = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999) - (8 * 60 * 60 * 1000));
+                    const startOfDay = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+                    const endOfDay = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
                     filters.startDate = startOfDay.toISOString();
                     filters.endDate = endOfDay.toISOString();
                 } else if (period) {
@@ -4800,6 +4800,8 @@
                     if (startDate) {
                         filters.startDate = startDate.toISOString();
                         filters.endDate = nowGMT8.toISOString();
+                        // Force fresh fetch
+                        filters._nocache = Date.now();
                     }
                 }
                 
