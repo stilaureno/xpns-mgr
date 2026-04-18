@@ -3905,15 +3905,20 @@
             if (filters.createdBy) query = query.eq('created_by', filters.createdBy);
             if (filters.category) query = query.eq('category_id', filters.category);
             
-            // Date filtering - use simple date comparison, not datetime
+            // Date filtering - extract date-only and use explicit date comparison
             if (filters.startDate) {
-                // Extract just the date part (YYYY-MM-DD) from the ISO string
                 const startDateOnly = filters.startDate.split('T')[0];
+                console.log('Using startDate filter:', startDateOnly);
                 query = query.gte('date', startDateOnly);
             }
             if (filters.endDate) {
                 const endDateOnly = filters.endDate.split('T')[0];
-                query = query.lte('date', endDateOnly);
+                // Add one day to include the full end date
+                const nextDay = new Date(endDateOnly);
+                nextDay.setDate(nextDay.getDate() + 1);
+                const endDatePlusOne = nextDay.toISOString().split('T')[0];
+                console.log('Using endDate filter:', endDatePlusOne, '(original:', endDateOnly, ')');
+                query = query.lt('date', endDatePlusOne);
             }
             
             const { data, error } = await query.order('date', { ascending: false }).order('created_at', { ascending: false });
@@ -4786,9 +4791,7 @@
                 if (state && state !== 'active') filters.state = state;
                 if (category) filters.category = category;
                 
-                console.log('Filter values - filterDate:', filterDate, 'period:', period, 'state:', state, 'category:', category);
-                console.log('Final filters being sent to sbGetExpenses:', filters);
-                
+                console.log('Fetching expenses from Supabase with filters:', filters);
                 const expenses = await sbGetExpenses(filters);
                 console.log('Expenses loaded:', expenses.length);
                 
