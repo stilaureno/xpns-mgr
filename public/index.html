@@ -4366,9 +4366,11 @@
                 }
                 
                 // Filter by date for period stats using string comparison
+                console.log('loadStatistics period:', period, 'startStr:', startStr, 'endStr:', endStr, 'allExpenses:', allExpenses?.length);
                 if (startStr && endStr && allExpenses) {
                     allExpenses.forEach(exp => {
                         const expDateStr = exp.date.split('T')[0].split(' ')[0];
+                        console.log('expDateStr:', expDateStr, 'exp.amount:', exp.amount, 'match:', expDateStr >= startStr && expDateStr <= endStr);
                         if (expDateStr >= startStr && expDateStr <= endStr) {
                             periodTotalCount++;
                             periodTotalAmount += parseFloat(exp.amount) || 0;
@@ -4376,7 +4378,7 @@
                     });
                 }
                 
-                console.log('Statistics loaded');
+                console.log('Statistics loaded, periodTotal:', periodTotalAmount);
                 
                 const statsGrid = document.getElementById('statsGrid');
                 
