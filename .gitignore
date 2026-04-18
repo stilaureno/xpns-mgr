@@ -134,7 +134,14 @@ dist
 !.yarn/sdks
 !.yarn/versions
 
+# Bun
+.bun/
+bun.lockb
+bun.lock
+
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vercel
+
+# $ (uv cache - Python, not part of this project)$/
