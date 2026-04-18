@@ -3921,14 +3921,14 @@
             
             if (filters.startDate || filters.endDate) {
                 // Convert ISO dates to YYYY-MM-DD strings for comparison
-                const startStr = filters.startDate ? filters.startDate.split('T')[0] : null;
-                const endStr = filters.endDate ? filters.endDate.split('T')[0] : null;
+                const startStr = filters.startDate ? filters.startDate.split('T')[0].split(' ')[0] : null;
+                const endStr = filters.endDate ? filters.endDate.split('T')[0].split(' ')[0] : null;
                 
                 console.log('Client-side date filter:', startStr, 'to', endStr);
                 
                 filteredData = filteredData.filter(exp => {
                     if (!exp.date) return false;
-                    const expDateStr = exp.date.split('T')[0];
+                    const expDateStr = exp.date.split('T')[0].split(' ')[0];
                     if (startStr && expDateStr < startStr) return false;
                     if (endStr && expDateStr > endStr) return false;
                     return true;
@@ -4368,7 +4368,7 @@
                 // Filter by date for period stats using string comparison
                 if (startStr && endStr && allExpenses) {
                     allExpenses.forEach(exp => {
-                        const expDateStr = exp.date.split('T')[0];
+                        const expDateStr = exp.date.split('T')[0].split(' ')[0];
                         if (expDateStr >= startStr && expDateStr <= endStr) {
                             periodTotalCount++;
                             periodTotalAmount += parseFloat(exp.amount) || 0;
@@ -4403,7 +4403,7 @@
                 if (totalViewMode === 'thisMonth' && allExpenses) {
                     let monthTotalAmount = 0;
                     allExpenses.forEach(exp => {
-                        const expDateStr = exp.date.split('T')[0];
+                        const expDateStr = exp.date.split('T')[0].split(' ')[0];
                         if (expDateStr >= currentMonthStart && expDateStr <= todayStr) {
                             monthTotalAmount += parseFloat(exp.amount) || 0;
                         }
@@ -4413,7 +4413,7 @@
                 } else if (totalViewMode === 'thisYear' && allExpenses) {
                     let yearTotalAmount = 0;
                     allExpenses.forEach(exp => {
-                        const expDateStr = exp.date.split('T')[0];
+                        const expDateStr = exp.date.split('T')[0].split(' ')[0];
                         if (expDateStr >= currentYearStart && expDateStr <= todayStr) {
                             yearTotalAmount += parseFloat(exp.amount) || 0;
                         }
@@ -6551,7 +6551,7 @@
                 // Calculate daily totals
                 const dailyTotalsMap = new Map();
                 expenses.forEach(exp => {
-                    const dateOnly = exp.date.split('T')[0];
+                    const dateOnly = exp.date.split('T')[0].split(' ')[0];
                     if (!dailyTotalsMap.has(dateOnly)) {
                         dailyTotalsMap.set(dateOnly, { day: dateOnly, count: 0, total_amount: 0 });
                     }
@@ -6628,7 +6628,7 @@
                 // Calculate daily totals
                 const dailyTotalsMap = new Map();
                 expenses.forEach(exp => {
-                    const dateOnly = exp.date.split('T')[0];
+                    const dateOnly = exp.date.split('T')[0].split(' ')[0];
                     if (!dailyTotalsMap.has(dateOnly)) {
                         dailyTotalsMap.set(dateOnly, { day: dateOnly, count: 0, total_amount: 0 });
                     }
