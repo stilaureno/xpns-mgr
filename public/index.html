@@ -3869,7 +3869,99 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+        // Supabase client configuration
+        const SUPABASE_URL = 'https://pffxpzdaifiuiwyisszq.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBmZnhwemRhaWZpdWl3eWlzc3pxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1MjI0MzUsImV4cCI6MjA5MjA5ODQzNX0.6CSshzN7RYT1j-7f9qt8s4WhXqIX6J1LurxqYuY0xuI';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Supabase helper functions
+        async function sbGetCategories() {
+            const { data, error } = await supabase.from('categories').select('*').order('name');
+            if (error) throw error;
+            return data || [];
+        }
+
+        async function sbGetUsers() {
+            const { data, error } = await supabase.from('users').select('*').order('name');
+            if (error) throw error;
+            return data || [];
+        }
+
+        async function sbGetExpenses(filters = {}) {
+            let query = supabase.from('expenses').select('*');
+            
+            // Exclude archived by default (show active)
+            if (filters.state !== 'archived') {
+                query = query.neq('state', 'archived');
+            }
+            if (filters.state === 'archived') {
+                query = query.eq('state', 'archived');
+            }
+            if (filters.createdBy) query = query.eq('created_by', filters.createdBy);
+            if (filters.category) query = query.eq('category_id', filters.category);
+            if (filters.startDate) query = query.gte('date', filters.startDate);
+            if (filters.endDate) query = query.lte('date', filters.endDate);
+            
+            const { data, error } = await query.order('date', { ascending: false }).order('created_at', { ascending: false });
+            if (error) throw error;
+            return data || [];
+        }
+
+        async function sbCreateExpense(expense) {
+            const { data, error } = await supabase.from('expenses').insert([{
+                id: crypto.randomUUID(),
+                title: expense.title,
+                description: expense.description,
+                amount: expense.amount,
+                currency: expense.currency,
+                category_id: expense.category,
+                date: expense.date,
+                state: 'draft',
+                payment_method: expense.paymentMethod || 'cash',
+                created_by: expense.createdBy
+            }]).select().single();
+            if (error) throw error;
+            return data;
+        }
+
+        async function sbUpdateExpense(id, updates) {
+            const updateData = {};
+            if (updates.title) updateData.title = updates.title;
+            if (updates.description !== undefined) updateData.description = updates.description;
+            if (updates.amount) updateData.amount = updates.amount;
+            if (updates.category) updateData.category_id = updates.category;
+            if (updates.date) updateData.date = updates.date;
+            if (updates.paymentMethod) updateData.payment_method = updates.paymentMethod;
+            updateData.updated_at = new Date().toISOString();
+
+            const { data, error } = await supabase.from('expenses').update(updateData).eq('id', id).select().single();
+            if (error) throw error;
+            return data;
+        }
+
+        async function sbDeleteExpense(id) {
+            // Delete history first
+            await supabase.from('expense_history').delete().eq('expense_id', id);
+            const { error } = await supabase.from('expenses').delete().eq('id', id);
+            if (error) throw error;
+            return true;
+        }
+
+        async function sbArchiveExpense(id, userId) {
+            const { data, error } = await supabase.from('expenses').update({ state: 'archived', updated_at: new Date().toISOString() }).eq('id', id).select().single();
+            if (error) throw error;
+            return data;
+        }
+
+        async function sbRestoreExpense(id) {
+            const { data, error } = await supabase.from('expenses').update({ state: 'draft', updated_at: new Date().toISOString() }).eq('id', id).select().single();
+            if (error) throw error;
+            return data;
+        }
+
         // Check if accessing via file:// protocol
         if (window.location.protocol === 'file:') {
             document.body.innerHTML = `
@@ -4108,14 +4200,8 @@
 
         async function loadCategories() {
             try {
-                console.log('Fetching categories from:', `${API_BASE}/categories`);
-                const response = await fetch(`${API_BASE}/categories`);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                categories = await response.json();
+                console.log('Fetching categories from Supabase...');
+                categories = await sbGetCategories();
                 console.log('Categories loaded:', categories);
                 
                 // Ensure Uncategorized exists
@@ -4159,14 +4245,8 @@
 
         async function loadUsers() {
             try {
-                console.log('Fetching users from:', `${API_BASE}/users`);
-                const response = await fetch(`${API_BASE}/users`);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                users = await response.json();
+                console.log('Fetching users from Supabase...');
+                users = await sbGetUsers();
                 console.log('Users loaded:', users);
                 
                 const userSelects = document.querySelectorAll('#expenseUser, #editExpenseUser');
@@ -4186,6 +4266,14 @@
 
         async function loadStatistics() {
             try {
+                // Get all non-archived expenses for stats
+                const { data: allExpenses, error } = await supabase
+                    .from('expenses')
+                    .select('state, amount')
+                    .neq('state', 'archived');
+                
+                if (error) throw error;
+                
                 const filterDate = document.getElementById('filterDate').value;
                 const period = document.getElementById('filterPeriod').value || 'today';
                 
@@ -4193,74 +4281,72 @@
                 let periodTotalCount = 0;
                 let periodTotalAmount = 0;
                 
-                // If a specific date is selected, use date-based stats (GMT+8)
+                const now = new Date();
+                const gmt8Time = new Date(now.getTime() + (8 * 60 * 60 * 1000));
+                let startDate, endDate;
+                
                 if (filterDate) {
                     const [year, month, day] = filterDate.split('-').map(Number);
-                    const startOfDay = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0) - (8 * 60 * 60 * 1000));
-                    const endOfDay = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999) - (8 * 60 * 60 * 1000));
+                    startDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0) - (8 * 60 * 60 * 1000));
+                    endDate = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999) - (8 * 60 * 60 * 1000));
                     
-                    // Create selectedDate for display formatting
                     const selectedDate = new Date(Date.UTC(year, month - 1, day));
-                    
-                    const dateStatsResponse = await fetch(
-                        `${API_BASE}/expenses/stats/summary?startDate=${startOfDay.toISOString()}&endDate=${endOfDay.toISOString()}`
-                    );
-                    
-                    if (dateStatsResponse.ok) {
-                        const dateStats = await dateStatsResponse.json();
-                        dateStats.forEach(stat => {
-                            if (stat.state === 'active') {
-                                periodTotalCount += parseInt(stat.total_count) || 0;
-                                periodTotalAmount += parseFloat(stat.total_amount) || 0;
-                            }
-                        });
-                    }
-                    
                     periodLabel = selectedDate.toLocaleDateString('en-US', { 
                         month: 'short', 
                         day: 'numeric', 
                         year: 'numeric' 
                     });
                 } else {
-                    // Load period-specific stats
-                    const periodResponse = await fetch(`${API_BASE}/expenses/stats/period/${period}`);
-                    const periodStats = periodResponse.ok ? await periodResponse.json() : [];
-                    
-                    periodStats.forEach(stat => {
-                        if (stat.state === 'active') {
-                            periodTotalCount += parseInt(stat.total_count) || 0;
-                            periodTotalAmount += parseFloat(stat.total_amount) || 0;
+                    switch(period) {
+                        case 'today':
+                            const todayGMT8 = getTodayGMT8();
+                            const [y, m, d] = todayGMT8.split('-').map(Number);
+                            startDate = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0) - (8 * 60 * 60 * 1000));
+                            endDate = gmt8Time;
+                            periodLabel = 'Today';
+                            break;
+                        case 'week':
+                            startDate = new Date(gmt8Time);
+                            startDate.setDate(startDate.getDate() - 7);
+                            endDate = gmt8Time;
+                            periodLabel = 'This Week';
+                            break;
+                        case 'month':
+                            startDate = new Date(Date.UTC(gmt8Time.getUTCFullYear(), gmt8Time.getUTCMonth(), 1, 0, 0, 0, 0) - (8 * 60 * 60 * 1000));
+                            endDate = gmt8Time;
+                            periodLabel = 'This Month';
+                            break;
+                        case 'year':
+                            startDate = new Date(Date.UTC(gmt8Time.getUTCFullYear(), 0, 1, 0, 0, 0, 0) - (8 * 60 * 60 * 1000));
+                            endDate = gmt8Time;
+                            periodLabel = 'This Year';
+                            break;
+                    }
+                }
+                
+                // Filter by date range for period stats
+                if (startDate && endDate && allExpenses) {
+                    allExpenses.forEach(exp => {
+                        const expDate = new Date(exp.date);
+                        if (expDate >= startDate && expDate <= endDate) {
+                            periodTotalCount++;
+                            periodTotalAmount += parseFloat(exp.amount) || 0;
                         }
                     });
-                    
-                    periodLabel = period === 'today' ? 'Today' : 
-                                  period === 'week' ? 'This Week' : 
-                                  period === 'month' ? 'This Month' : 
-                                  period === 'year' ? 'This Year' : 'All Time';
                 }
                 
-                // Also load overall stats
-                const response = await fetch(`${API_BASE}/expenses/stats/summary`);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const allStats = await response.json();
-                console.log('Statistics loaded:', allStats);
+                console.log('Statistics loaded');
                 
                 const statsGrid = document.getElementById('statsGrid');
                 
-                // Calculate overall totals
-                let totalCount = 0;
+                // Calculate overall totals from allExpenses
+                let totalCount = allExpenses ? allExpenses.length : 0;
                 let totalAmount = 0;
-                
-                allStats.forEach(stat => {
-                    if (stat.state === 'active') {
-                        totalCount += parseInt(stat.total_count) || 0;
-                        totalAmount += parseFloat(stat.total_amount) || 0;
-                    }
-                });
+                if (allExpenses) {
+                    allExpenses.forEach(exp => {
+                        totalAmount += parseFloat(exp.amount) || 0;
+                    });
+                }
                 
                 const formattedPeriodAmount = formatNumberWithCommas(periodTotalAmount);
                 const formattedTotalAmount = formatNumberWithCommas(totalAmount);
@@ -4269,24 +4355,25 @@
                 let displayLabel = 'All Time Total';
                 let displayAmount = formattedTotalAmount;
                 
-                if (totalViewMode === 'thisMonth') {
-                    const monthResponse = await fetch(`${API_BASE}/expenses/stats/period/month`);
-                    const monthStats = monthResponse.ok ? await monthResponse.json() : [];
+                // Calculate month and year totals from allExpenses
+                if (totalViewMode === 'thisMonth' && allExpenses) {
+                    const startOfMonth = new Date(Date.UTC(gmt8Time.getUTCFullYear(), gmt8Time.getUTCMonth(), 1, 0, 0, 0, 0) - (8 * 60 * 60 * 1000));
                     let monthTotalAmount = 0;
-                    monthStats.forEach(stat => {
-                        if (stat.state === 'active') {
-                            monthTotalAmount += parseFloat(stat.total_amount) || 0;
+                    allExpenses.forEach(exp => {
+                        const expDate = new Date(exp.date);
+                        if (expDate >= startOfMonth && expDate <= gmt8Time) {
+                            monthTotalAmount += parseFloat(exp.amount) || 0;
                         }
                     });
                     displayLabel = 'This Month Total';
                     displayAmount = formatNumberWithCommas(monthTotalAmount);
-                } else if (totalViewMode === 'thisYear') {
-                    const yearResponse = await fetch(`${API_BASE}/expenses/stats/period/year`);
-                    const yearStats = yearResponse.ok ? await yearResponse.json() : [];
+                } else if (totalViewMode === 'thisYear' && allExpenses) {
+                    const startOfYear = new Date(Date.UTC(gmt8Time.getUTCFullYear(), 0, 1, 0, 0, 0, 0) - (8 * 60 * 60 * 1000));
                     let yearTotalAmount = 0;
-                    yearStats.forEach(stat => {
-                        if (stat.state === 'active') {
-                            yearTotalAmount += parseFloat(stat.total_amount) || 0;
+                    allExpenses.forEach(exp => {
+                        const expDate = new Date(exp.date);
+                        if (expDate >= startOfYear && expDate <= gmt8Time) {
+                            yearTotalAmount += parseFloat(exp.amount) || 0;
                         }
                     });
                     displayLabel = 'This Year Total';
@@ -4643,27 +4730,22 @@
                 const state = document.getElementById('filterState')?.value || '';
                 const category = document.getElementById('filterCategory')?.value || '';
                 
-                let url = `${API_BASE}/expenses?`;
+                // Build filters object for Supabase
+                const filters = {};
                 
                 // Priority: If a specific date is selected, use that; otherwise use period
                 if (filterDate) {
-                    // Filter by specific date (entire day in GMT+8)
-                    // Parse the date string (YYYY-MM-DD) and create start/end of day in GMT+8
                     const [year, month, day] = filterDate.split('-').map(Number);
-                    // Create date in GMT+8 (subtract 8 hours from UTC to get GMT+8 midnight)
                     const startOfDay = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0) - (8 * 60 * 60 * 1000));
                     const endOfDay = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999) - (8 * 60 * 60 * 1000));
-                    
-                    url += `startDate=${startOfDay.toISOString()}&`;
-                    url += `endDate=${endOfDay.toISOString()}&`;
+                    filters.startDate = startOfDay.toISOString();
+                    filters.endDate = endOfDay.toISOString();
                 } else if (period) {
-                    // Add date filtering based on period (using GMT+8)
                     const nowGMT8 = getNowGMT8();
                     let startDate;
                     
                     switch(period) {
                         case 'today':
-                            // Start of today in GMT+8
                             const todayGMT8 = getTodayGMT8();
                             const [year, month, day] = todayGMT8.split('-').map(Number);
                             startDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0) - (8 * 60 * 60 * 1000));
@@ -4681,22 +4763,16 @@
                     }
                     
                     if (startDate) {
-                        url += `startDate=${startDate.toISOString()}&`;
-                        url += `endDate=${nowGMT8.toISOString()}&`;
+                        filters.startDate = startDate.toISOString();
+                        filters.endDate = nowGMT8.toISOString();
                     }
                 }
                 
-                if (state) url += `state=${state}&`;
-                if (category) url += `category=${category}&`;
+                if (state) filters.state = state;
+                if (category) filters.category = category;
                 
-                console.log('Fetching expenses from:', url);
-                const response = await fetch(url);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const expenses = await response.json();
+                console.log('Fetching expenses from Supabase with filters:', filters);
+                const expenses = await sbGetExpenses(filters);
                 console.log('Expenses loaded:', expenses.length);
                 
                 // Store all expenses for client-side search filtering
@@ -5369,18 +5445,13 @@
             });
             
             try {
-                const response = await fetch(`${API_BASE}/expenses`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(expense)
-                });
+                await sbCreateExpense(expense);
                 
-                if (response.ok) {
-                    closeModal();
-                    // Clear the form
-                    document.getElementById('expenseForm').reset();
-                    await loadExpenses();
-                    await loadStatistics();
+                closeModal();
+                // Clear the form
+                document.getElementById('expenseForm').reset();
+                await loadExpenses();
+                await loadStatistics();
                 } else {
                     const error = await response.json();
                     alert('Failed to create expense: ' + (error.error || 'Unknown error'));
@@ -5407,20 +5478,11 @@
             };
             
             try {
-                const response = await fetch(`${API_BASE}/expenses/${expenseId}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(expense)
-                });
+                await sbUpdateExpense(expenseId, expense);
                 
-                if (response.ok) {
-                    closeEditModal();
-                    await loadExpenses();
-                    await loadStatistics();
-                } else {
-                    const error = await response.json();
-                    alert('Failed to update expense: ' + (error.error || 'Unknown error'));
-                }
+                closeEditModal();
+                await loadExpenses();
+                await loadStatistics();
             } catch (error) {
                 console.error('Error updating expense:', error);
                 alert('Failed to update expense. Please try again.');
@@ -5428,31 +5490,21 @@
         }
 
         async function archiveExpense(id) {
-            const user = users[0];
-            const response = await fetch(`${API_BASE}/expenses/${id}/archive`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id })
-            });
-            
-            if (response.ok) {
+            try {
+                const user = users[0];
+                await sbArchiveExpense(id, user ? user.id : 'system');
                 await loadExpenses();
                 await loadStatistics();
-            } else {
-                const error = await response.json();
-                alert('Failed to archive expense: ' + (error.error || 'Unknown error'));
+            } catch (error) {
+                alert('Failed to archive expense: ' + error.message);
             }
         }
 
         async function restoreExpense(id) {
             try {
-                const user = users[0];
-                if (!user) {
-                    alert('No user available. Please refresh the page.');
-                    return;
-                }
-                
-                const response = await fetch(`${API_BASE}/expenses/${id}/restore`, {
+                await sbRestoreExpense(id);
+                await loadExpenses();
+                await loadStatistics();
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId: user.id })
@@ -5477,16 +5529,12 @@
                 return;
             }
             
-            const response = await fetch(`${API_BASE}/expenses/${id}`, {
-                method: 'DELETE'
-            });
-            
-            if (response.ok) {
+            try {
+                await sbDeleteExpense(id);
                 await loadExpenses();
                 await loadStatistics();
-            } else {
-                const error = await response.json();
-                alert('Failed to delete expense: ' + (error.error || 'Unknown error'));
+            } catch (error) {
+                alert('Failed to delete expense: ' + error.message);
             }
         }
 
