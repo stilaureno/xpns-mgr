@@ -3868,29 +3868,29 @@
             </div>
         </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabaseClient/supabaseClient-js@2"></script>
     <script>
         // Supabase client configuration
-        const SUPABASE_URL = 'https://pffxpzdaifiuiwyisszq.supabase.co';
+        const SUPABASE_URL = 'https://pffxpzdaifiuiwyisszq.supabaseClient.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBmZnhwemRhaWZpdWl3eWlzc3pxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1MjI0MzUsImV4cCI6MjA5MjA5ODQzNX0.6CSshzN7RYT1j-7f9qt8s4WhXqIX6J1LurxqYuY0xuI';
         
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabaseClientClient = window.supabaseClient.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // Supabase helper functions
         async function sbGetCategories() {
-            const { data, error } = await supabase.from('categories').select('*').order('name');
+            const { data, error } = await supabaseClient.from('categories').select('*').order('name');
             if (error) throw error;
             return data || [];
         }
 
         async function sbGetUsers() {
-            const { data, error } = await supabase.from('users').select('*').order('name');
+            const { data, error } = await supabaseClient.from('users').select('*').order('name');
             if (error) throw error;
             return data || [];
         }
 
         async function sbGetExpenses(filters = {}) {
-            let query = supabase.from('expenses').select('*');
+            let query = supabaseClient.from('expenses').select('*');
             
             // Exclude archived by default (show active)
             if (filters.state !== 'archived') {
@@ -3910,7 +3910,7 @@
         }
 
         async function sbCreateExpense(expense) {
-            const { data, error } = await supabase.from('expenses').insert([{
+            const { data, error } = await supabaseClient.from('expenses').insert([{
                 id: crypto.randomUUID(),
                 title: expense.title,
                 description: expense.description,
@@ -3936,33 +3936,33 @@
             if (updates.paymentMethod) updateData.payment_method = updates.paymentMethod;
             updateData.updated_at = new Date().toISOString();
 
-            const { data, error } = await supabase.from('expenses').update(updateData).eq('id', id).select().single();
+            const { data, error } = await supabaseClient.from('expenses').update(updateData).eq('id', id).select().single();
             if (error) throw error;
             return data;
         }
 
         async function sbDeleteExpense(id) {
             // Delete history first
-            await supabase.from('expense_history').delete().eq('expense_id', id);
-            const { error } = await supabase.from('expenses').delete().eq('id', id);
+            await supabaseClient.from('expense_history').delete().eq('expense_id', id);
+            const { error } = await supabaseClient.from('expenses').delete().eq('id', id);
             if (error) throw error;
             return true;
         }
 
         async function sbArchiveExpense(id, userId) {
-            const { data, error } = await supabase.from('expenses').update({ state: 'archived', updated_at: new Date().toISOString() }).eq('id', id).select().single();
+            const { data, error } = await supabaseClient.from('expenses').update({ state: 'archived', updated_at: new Date().toISOString() }).eq('id', id).select().single();
             if (error) throw error;
             return data;
         }
 
         async function sbRestoreExpense(id) {
-            const { data, error } = await supabase.from('expenses').update({ state: 'draft', updated_at: new Date().toISOString() }).eq('id', id).select().single();
+            const { data, error } = await supabaseClient.from('expenses').update({ state: 'draft', updated_at: new Date().toISOString() }).eq('id', id).select().single();
             if (error) throw error;
             return data;
         }
 
         async function sbCreateCategory(category) {
-            const { data, error } = await supabase.from('categories').insert([{
+            const { data, error } = await supabaseClient.from('categories').insert([{
                 id: crypto.randomUUID(),
                 name: category.name,
                 description: category.description,
@@ -4266,7 +4266,7 @@
         async function loadStatistics() {
             try {
                 // Get all non-archived expenses for stats
-                const { data: allExpenses, error } = await supabase
+                const { data: allExpenses, error } = await supabaseClient
                     .from('expenses')
                     .select('state, amount')
                     .neq('state', 'archived');
@@ -5067,7 +5067,7 @@
 
         async function openEditModal(expenseId) {
             try {
-                const { data: expense, error } = await supabase.from('expenses').select('*').eq('id', expenseId).single();
+                const { data: expense, error } = await supabaseClient.from('expenses').select('*').eq('id', expenseId).single();
                 if (error || !expense) {
                     throw new Error('Failed to load expense');
                 }
@@ -5296,7 +5296,7 @@
             try {
                 if (categoryId) {
                     // Update existing category
-                    const { error } = await supabase.from('categories').update({ name, color }).eq('id', categoryId);
+                    const { error } = await supabaseClient.from('categories').update({ name, color }).eq('id', categoryId);
                     if (error) throw error;
                 } else {
                     // Create new category
@@ -5328,11 +5328,11 @@
                 
                 // Move expenses to uncategorized
                 if (uncategorized) {
-                    await supabase.from('expenses').update({ category_id: uncategorized.id }).eq('category_id', categoryId);
+                    await supabaseClient.from('expenses').update({ category_id: uncategorized.id }).eq('category_id', categoryId);
                 }
                 
                 // Delete the category
-                const { error } = await supabase.from('categories').delete().eq('id', categoryId);
+                const { error } = await supabaseClient.from('categories').delete().eq('id', categoryId);
                 if (error) throw error;
 
                 await loadCategories();
@@ -6008,7 +6008,7 @@
                             await sbArchiveExpense(expenseId, user ? user.id : 'system');
                         } else if (statusChange === 'active') {
                             // Check current state - if archived, restore it
-                            const { data: expense } = await supabase.from('expenses').select('state').eq('id', expenseId).single();
+                            const { data: expense } = await supabaseClient.from('expenses').select('state').eq('id', expenseId).single();
                             if (expense && expense.state === 'archived') {
                                 await sbRestoreExpense(expenseId);
                             }
