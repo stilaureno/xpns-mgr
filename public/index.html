@@ -3892,12 +3892,15 @@
         async function sbGetExpenses(filters = {}) {
             let query = supabaseClient.from('expenses').select('*');
             
-            // Exclude archived by default (show active)
-            if (filters.state !== 'archived') {
+            // Handle "active" as special case - means non-archived (draft, pending_approval, approved, etc.)
+            if (filters.state === 'active' || filters.state === undefined || filters.state === '') {
+                // Exclude archived expenses (show all non-archived)
                 query = query.neq('state', 'archived');
-            }
-            if (filters.state === 'archived') {
+            } else if (filters.state === 'archived') {
                 query = query.eq('state', 'archived');
+            } else {
+                // Specific state filter
+                query = query.eq('state', filters.state);
             }
             if (filters.createdBy) query = query.eq('created_by', filters.createdBy);
             if (filters.category) query = query.eq('category_id', filters.category);
@@ -4767,7 +4770,7 @@
                     }
                 }
                 
-                if (state) filters.state = state;
+                if (state && state !== 'active') filters.state = state;
                 if (category) filters.category = category;
                 
                 console.log('Fetching expenses from Supabase with filters:', filters);
