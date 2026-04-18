@@ -3962,6 +3962,17 @@
             return data;
         }
 
+        async function sbCreateCategory(category) {
+            const { data, error } = await supabase.from('categories').insert([{
+                id: crypto.randomUUID(),
+                name: category.name,
+                description: category.description,
+                color: category.color
+            }]).select().single();
+            if (error) throw error;
+            return data;
+        }
+
         // Check if accessing via file:// protocol
         if (window.location.protocol === 'file:') {
             document.body.innerHTML = `
@@ -4173,24 +4184,13 @@
             if (!uncategorized) {
                 console.log('Uncategorized category not found, creating it...');
                 try {
-                    const response = await fetch(`${API_BASE}/categories`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            name: 'Uncategorized',
-                            description: 'Uncategorized expenses',
-                            color: '#6B7280'
-                        })
+                    await sbCreateCategory({
+                        name: 'Uncategorized',
+                        description: 'Uncategorized expenses',
+                        color: '#6B7280'
                     });
-                    
-                    if (response.ok) {
-                        const newCategory = await response.json();
-                        categories.unshift(newCategory); // Add to beginning of array
-                        console.log('Uncategorized category created:', newCategory);
-                        return newCategory;
-                    } else {
-                        console.warn('Failed to create Uncategorized category');
-                    }
+                    await loadCategories();
+                    console.log('Uncategorized category created');
                 } catch (error) {
                     console.error('Error creating Uncategorized category:', error);
                 }
@@ -5068,12 +5068,10 @@
 
         async function openEditModal(expenseId) {
             try {
-                const response = await fetch(`${API_BASE}/expenses/${expenseId}`);
-                if (!response.ok) {
+                const { data: expense, error } = await supabase.from('expenses').select('*').eq('id', expenseId).single();
+                if (error || !expense) {
                     throw new Error('Failed to load expense');
                 }
-                
-                const expense = await response.json();
                 
                 // Populate edit form
                 document.getElementById('editExpenseId').value = expense.id;
@@ -5302,26 +5300,13 @@
             }
 
             try {
-                let response;
                 if (categoryId) {
                     // Update existing category
-                    response = await fetch(`${API_BASE}/categories/${categoryId}`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name, color })
-                    });
+                    const { error } = await supabase.from('categories').update({ name, color }).eq('id', categoryId);
+                    if (error) throw error;
                 } else {
                     // Create new category
-                    response = await fetch(`${API_BASE}/categories`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name, color })
-                    });
-                }
-
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || 'Failed to save category');
+                    await sbCreateCategory({ name, color, description: '' });
                 }
 
                 hideCategoryForm();
@@ -5344,22 +5329,48 @@
             }
 
             try {
-                const response = await fetch(`${API_BASE}/categories/${categoryId}`, {
-                    method: 'DELETE'
-                });
-
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || 'Failed to delete category');
+                // Get the uncategorized category ID
+                const uncategorized = categories.find(c => c.name.toLowerCase() === 'uncategorized');
+                
+                // Move expenses to uncategorized
+                if (uncategorized) {
+                    await supabase.from('expenses').update({ category_id: uncategorized.id }).eq('category_id', categoryId);
                 }
+                
+                // Delete the category
+                const { error } = await supabase.from('categories').delete().eq('id', categoryId);
+                if (error) throw error;
 
                 await loadCategories();
                 renderCategoriesList();
                 await loadExpenses(); // Refresh expenses to show updated categories
             } catch (error) {
                 console.error('Error deleting category:', error);
-                alert(error.message || 'Failed to delete category');
+                alert('Failed to delete category. Please try again.');
             }
+        }
+
+        async function ensureUncategorizedCategory() {
+            const uncategorized = categories.find(cat => 
+                cat.name.toLowerCase().trim() === 'uncategorized'
+            );
+            
+            if (!uncategorized) {
+                console.log('Uncategorized category not found, creating it...');
+                try {
+                    await sbCreateCategory({
+                        name: 'Uncategorized',
+                        description: 'Uncategorized expenses',
+                        color: '#6B7280'
+                    });
+                    // Reload categories
+                    await loadCategories();
+                    console.log('Uncategorized category created');
+                } catch (error) {
+                    console.error('Error creating Uncategorized category:', error);
+                }
+            }
+            return uncategorized;
         }
 
         async function saveExpense(event) {
@@ -6012,40 +6023,22 @@
 
             for (const expenseId of selectedIds) {
                 try {
-                    // For status changes, we need to use transitions
+                    // For status changes
                     if (statusChange) {
                         if (statusChange === 'archived') {
-                            const response = await fetch(`${API_BASE}/expenses/${expenseId}/archive`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ userId: user.id })
-                            });
-                            if (!response.ok) throw new Error('Archive failed');
+                            await sbArchiveExpense(expenseId, user ? user.id : 'system');
                         } else if (statusChange === 'active') {
                             // Check current state - if archived, restore it
-                            const expenseResponse = await fetch(`${API_BASE}/expenses/${expenseId}`);
-                            if (expenseResponse.ok) {
-                                const expense = await expenseResponse.json();
-                                if (expense.state === 'archived') {
-                                    const response = await fetch(`${API_BASE}/expenses/${expenseId}/restore`, {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ userId: user.id })
-                                    });
-                                    if (!response.ok) throw new Error('Restore failed');
-                                }
+                            const { data: expense } = await supabase.from('expenses').select('state').eq('id', expenseId).single();
+                            if (expense && expense.state === 'archived') {
+                                await sbRestoreExpense(expenseId);
                             }
                         }
                     }
 
                     // Update category if needed
                     if (categoryChange) {
-                        const response = await fetch(`${API_BASE}/expenses/${expenseId}`, {
-                            method: 'PATCH',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ category: categoryChange })
-                        });
-                        if (!response.ok) throw new Error('Update failed');
+                        await sbUpdateExpense(expenseId, { category: categoryChange });
                     }
 
                     successCount++;
@@ -6082,19 +6075,26 @@
 
             for (const expenseId of selectedIds) {
                 try {
-                    const response = await fetch(`${API_BASE}/expenses/${expenseId}`, {
-                        method: 'DELETE'
-                    });
-                    if (response.ok) {
-                        successCount++;
-                    } else {
-                        errorCount++;
-                    }
+                    await sbDeleteExpense(expenseId);
+                    successCount++;
                 } catch (error) {
                     console.error(`Error deleting expense ${expenseId}:`, error);
                     errorCount++;
                 }
             }
+            
+            clearSelection();
+            await loadExpenses();
+            await loadStatistics();
+            
+            if (errorCount > 0) {
+                alert(`Deleted ${successCount} expense(s). ${errorCount} failed.`);
+            } else {
+                alert(`Successfully deleted ${successCount} expense(s).`);
+            }
+        }
+
+        // Initialize
 
             clearSelection();
             await loadExpenses();
@@ -6213,23 +6213,17 @@
             let yearlyTotals = {};
             try {
                 // Fetch all active expenses to calculate yearly totals
-                // Since we don't have a yearly filter, we'll fetch all and group by year
-                const response = await fetch(`${API_BASE}/expenses?state=active&limit=10000`);
+                const expenses = await sbGetExpenses({ state: 'active' });
 
-                if (response.ok) {
-                    const data = await response.json();
-                    const expenses = Array.isArray(data) ? data : (data.expenses || []);
-
-                    // Calculate totals by year
-                    expenses.forEach(expense => {
-                        if (expense.date) {
-                            const year = parseInt(expense.date.split('-')[0]);
-                            if (year >= currentYear - 5 && year <= currentYear) {
-                                yearlyTotals[year] = (yearlyTotals[year] || 0) + (expense.amount || 0);
-                            }
+                // Calculate totals by year
+                expenses.forEach(expense => {
+                    if (expense.date) {
+                        const year = parseInt(expense.date.split('-')[0]);
+                        if (year >= currentYear - 5 && year <= currentYear) {
+                            yearlyTotals[year] = (yearlyTotals[year] || 0) + (parseFloat(expense.amount) || 0);
                         }
-                    });
-                }
+                    }
+                });
             } catch (error) {
                 console.error('Error fetching yearly totals:', error);
             }
@@ -6342,22 +6336,17 @@
             let yearlyTotals = {};
             try {
                 // Fetch all active expenses to calculate yearly totals
-                const response = await fetch(`${API_BASE}/expenses?state=active&limit=10000`);
+                const expenses = await sbGetExpenses({ state: 'active' });
 
-                if (response.ok) {
-                    const data = await response.json();
-                    const expenses = Array.isArray(data) ? data : (data.expenses || []);
-
-                    // Calculate totals by year
-                    expenses.forEach(expense => {
-                        if (expense.date) {
-                            const year = parseInt(expense.date.split('-')[0]);
-                            if (year >= currentYear - 5 && year <= currentYear) {
-                                yearlyTotals[year] = (yearlyTotals[year] || 0) + (expense.amount || 0);
-                            }
+                // Calculate totals by year
+                expenses.forEach(expense => {
+                    if (expense.date) {
+                        const year = parseInt(expense.date.split('-')[0]);
+                        if (year >= currentYear - 5 && year <= currentYear) {
+                            yearlyTotals[year] = (yearlyTotals[year] || 0) + (parseFloat(expense.amount) || 0);
                         }
-                    });
-                }
+                    }
+                });
             } catch (error) {
                 console.error('Error fetching yearly totals:', error);
             }
@@ -6426,30 +6415,28 @@
                 const yearEnd = new Date(Date.UTC(year, 11, 31, 23, 59, 59, 999) - (8 * 60 * 60 * 1000));
 
                 // Only fetch active (non-archived) expenses
-                const response = await fetch(`${API_BASE}/expenses?state=active&startDate=${yearStart.toISOString()}&endDate=${yearEnd.toISOString()}&limit=10000`);
+                const expenses = await sbGetExpenses({ 
+                    state: 'active',
+                    startDate: yearStart.toISOString(),
+                    endDate: yearEnd.toISOString()
+                });
                 
-                if (response.ok) {
-                    const data = await response.json();
-                    // API returns array directly, not wrapped in {expenses: []}
-                    const expenses = Array.isArray(data) ? data : (data.expenses || []);
-                    
-                    console.log(`Found ${expenses.length} active expenses for ${year}`, expenses.slice(0, 3));
-                    
-                    // Calculate totals by month
-                    expenses.forEach(expense => {
-                        if (expense.date) {
-                            const dateParts = expense.date.split('-');
-                            if (dateParts.length >= 2) {
-                                const month = parseInt(dateParts[1]) - 1; // 0-indexed
-                                if (month >= 0 && month < 12) {
-                                    monthlyTotals[month] += (expense.amount || 0);
-                                }
+                console.log(`Found ${expenses.length} active expenses for ${year}`);
+                
+                // Calculate totals by month
+                expenses.forEach(expense => {
+                    if (expense.date) {
+                        const dateParts = expense.date.split('-');
+                        if (dateParts.length >= 2) {
+                            const month = parseInt(dateParts[1]) - 1; // 0-indexed
+                            if (month >= 0 && month < 12) {
+                                monthlyTotals[month] += (parseFloat(expense.amount) || 0);
                             }
                         }
-                    });
-                    
-                    console.log('Monthly totals (active only):', monthlyTotals);
-                }
+                    }
+                });
+                
+                console.log('Monthly totals (active only):', monthlyTotals);
             } catch (error) {
                 console.error('Error fetching monthly totals:', error);
             }
@@ -6557,13 +6544,31 @@
             try {
                 contentDiv.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--gray-600);">Loading...</div>';
                 
-                const response = await fetch(`${API_BASE}/expenses/stats/daily-totals?year=${year}&month=${month}`);
+                // Calculate daily totals client-side from Supabase
+                const startDateStr = `${year}-${String(month).padStart(2, '0')}-01`;
+                const lastDay = new Date(year, month, 0).getDate();
+                const endDateStr = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                const expenses = await sbGetExpenses({ 
+                    state: 'active',
+                    startDate: startDateStr,
+                    endDate: endDateStr
+                });
                 
-                const dailyTotals = await response.json();
+                // Calculate daily totals
+                const dailyTotalsMap = new Map();
+                expenses.forEach(exp => {
+                    const dateOnly = exp.date.split('T')[0];
+                    if (!dailyTotalsMap.has(dateOnly)) {
+                        dailyTotalsMap.set(dateOnly, { day: dateOnly, count: 0, total_amount: 0 });
+                    }
+                    const dayData = dailyTotalsMap.get(dateOnly);
+                    dayData.count += 1;
+                    dayData.total_amount += parseFloat(exp.amount) || 0;
+                });
+                
+                const dailyTotals = Array.from(dailyTotalsMap.values()).sort((a, b) => a.day.localeCompare(b.day));
+                
                 lastLoadedDailyTotals = dailyTotals;
                 lastLoadedYear = year;
                 lastLoadedMonth = month;
@@ -6615,13 +6620,30 @@
             try {
                 contentDiv.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--gray-600);">Loading...</div>';
                 
-                const response = await fetch(`${API_BASE}/expenses/stats/daily-totals?year=${year}&month=${month}`);
+                // Calculate daily totals client-side from Supabase
+                const startDateStr = `${year}-${String(month).padStart(2, '0')}-01`;
+                const lastDay = new Date(year, month, 0).getDate();
+                const endDateStr = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                const expenses = await sbGetExpenses({ 
+                    state: 'active',
+                    startDate: startDateStr,
+                    endDate: endDateStr
+                });
                 
-                const dailyTotals = await response.json();
+                // Calculate daily totals
+                const dailyTotalsMap = new Map();
+                expenses.forEach(exp => {
+                    const dateOnly = exp.date.split('T')[0];
+                    if (!dailyTotalsMap.has(dateOnly)) {
+                        dailyTotalsMap.set(dateOnly, { day: dateOnly, count: 0, total_amount: 0 });
+                    }
+                    const dayData = dailyTotalsMap.get(dateOnly);
+                    dayData.count += 1;
+                    dayData.total_amount += parseFloat(exp.amount) || 0;
+                });
+                
+                const dailyTotals = Array.from(dailyTotalsMap.values()).sort((a, b) => a.day.localeCompare(b.day));
                 lastLoadedDailyTotals = dailyTotals;
                 lastLoadedYear = year;
                 lastLoadedMonth = month;
