@@ -4917,15 +4917,18 @@
             return expenses.map(expense => {
                 const category = categories.find(c => c.id === expense.category);
                 const actions = getActions(expense);
-                const expenseDate = new Date(expense.date);
-                const expenseDateGMT8 = new Date(expenseDate.getTime() + (8 * 60 * 60 * 1000));
-                const expenseDateString = expenseDateGMT8.toISOString().split('T')[0];
-                const isToday = isTodayGMT8(expenseDateString);
-                const dateDisplay = isToday ? 'Today' : expenseDate.toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: expenseDate.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
-                });
+                // Parse date string directly - it's stored as YYYY-MM-DD in DB
+                const dateStr = expense.date.split('T')[0];
+                const isToday = isTodayGMT8(dateStr);
+                const dateDisplay = isToday ? 'Today' : (() => {
+                    const [y, m, d] = dateStr.split('-').map(Number);
+                    const date = new Date(Date.UTC(y, m - 1, d));
+                    return date.toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        y: date.getUTCFullYear() !== new Date().getUTCFullYear() ? 'numeric' : undefined
+                    });
+                })();
                 const descriptionHtml = expense.description ? `<span class="description">${expense.description}</span>` : '';
                 const isSelected = selectedExpenses.has(expense.id);
                 return `
@@ -4959,15 +4962,17 @@
 
         function renderExpensesCards(expenses) {
             return expenses.map(expense => {
-                const expenseDate = new Date(expense.date);
-                const expenseDateGMT8 = new Date(expenseDate.getTime() + (8 * 60 * 60 * 1000));
-                const expenseDateString = expenseDateGMT8.toISOString().split('T')[0];
-                const isToday = isTodayGMT8(expenseDateString);
-                const dateDisplay = isToday ? 'Today' : expenseDate.toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: expenseDate.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
-                });
+                const dateStr = expense.date.split('T')[0];
+                const isToday = isTodayGMT8(dateStr);
+                const dateDisplay = isToday ? 'Today' : (() => {
+                    const [y, m, d] = dateStr.split('-').map(Number);
+                    const date = new Date(Date.UTC(y, m - 1, d));
+                    return date.toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: date.getUTCFullYear() !== new Date().getUTCFullYear() ? 'numeric' : undefined
+                    });
+                })();
                 const descriptionHtml = expense.description ? `<div class="expense-card-description">${expense.description}</div>` : '';
                 const isSelected = selectedExpenses.has(expense.id);
                 const menuId = `expenseMenu-${expense.id}`;
