@@ -4315,7 +4315,8 @@
                     .from('expenses')
                     .select('state, amount, date')
                     .neq('state', 'archived')
-                    .range(0, 5000);
+                    .order('date', { ascending: true })
+                    .range(0, 4999);
                 
                 if (error) throw error;
                 
