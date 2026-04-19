@@ -4367,6 +4367,7 @@
                 if (startStr && endStr && allExpenses) {
                     allExpenses.forEach(exp => {
                         let expDateStr = ('' + exp.date).substring(0, 10);
+                        console.log('DEBUG - exp.date:', exp.date, 'type:', typeof exp.date, 'expDateStr:', expDateStr, 'startStr:', startStr, 'endStr:', endStr);
                         if (expDateStr === startStr) {
                             console.log('MATCH:', exp.amount, exp.date, '->', expDateStr);
                         }
