@@ -4364,6 +4364,10 @@
                 
                 // Filter by date for period stats using simple substring
                 console.log('loadStatistics period:', period, 'startStr:', startStr, 'endStr:', endStr, 'allExpenses:', allExpenses?.length);
+                
+                // List all unique dates in the data
+                const allDates = [...new Set(allExpenses.map(e => ('' + e.date).substring(0, 10)))].sort();
+                console.log('ALL unique dates in data:', allDates);
                 if (startStr && endStr && allExpenses) {
                     allExpenses.forEach(exp => {
                         let expDateStr = ('' + exp.date).substring(0, 10);
